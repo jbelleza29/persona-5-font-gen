@@ -46,7 +46,7 @@ function pickAccentModes(chars: string[], rng: Rng): CharMode[] {
   for (let i = 1; i < chars.length; i += RED_RANGE) {
     for (let j = i; j < i + RED_RANGE - 1 && j < chars.length; ++j) {
       if (rng() * 10 > 6) {
-        modes[j] = rng() < 0.5 ? CharMode.RED : CharMode.INVERT;
+        modes[j] = CharMode.INVERT;
         break;
       }
     }
@@ -116,12 +116,7 @@ function buildSpec(
   const display = mode !== CharMode.FIRST && rng() < LOWER_PROB ? char.toLowerCase() : char;
 
   const fontSize = opts.fontSize * scale;
-  const color =
-    mode === CharMode.RED
-      ? Colors.RED
-      : mode === CharMode.INVERT
-        ? Colors.BLACK
-        : Colors.WHITE;
+  const color = mode === CharMode.INVERT ? Colors.BLACK : Colors.WHITE;
   const size = metrics.measure(display, fontSize, fontFamily, 'normal');
   const rot = rotatedBox(size.width, size.height, angle);
   const outter = mode === CharMode.FIRST ? BORDER_SCALE : BACKGROUND_SCALE;
@@ -226,19 +221,9 @@ export function computeLayout(
     const textY = height / 2 + (s.size.ascent - s.size.descent) / 2;
     const style: 'box' | 'contour' = i === firstIdx || i === lastIdx ? 'contour' : 'box';
 
-    // Contour colors: black traces the letter; inverted traces in white; first in red.
-    let outlineColor: string;
-    let edgeColor: string;
-    if (s.mode === CharMode.INVERT) {
-      outlineColor = Colors.WHITE;
-      edgeColor = Colors.BLACK;
-    } else if (s.mode === CharMode.FIRST) {
-      outlineColor = Colors.RED;
-      edgeColor = Colors.WHITE;
-    } else {
-      outlineColor = Colors.BLACK;
-      edgeColor = Colors.WHITE;
-    }
+    // Contour colors: black traces the letter; inverted traces in white. No red.
+    const outlineColor = s.mode === CharMode.INVERT ? Colors.WHITE : Colors.BLACK;
+    const edgeColor = s.mode === CharMode.INVERT ? Colors.BLACK : Colors.WHITE;
 
     const rects: RectLayer[] = [];
     let rightEdge = offset + ow;

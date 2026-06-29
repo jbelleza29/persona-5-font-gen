@@ -7,8 +7,7 @@ export const Colors = {
 export enum CharMode {
   FIRST = 'first',
   WHITE = 'white',
-  RED = 'red',
-  /** Black letter on a white box with a black border. */
+  /** Black letter on a white box / white outline. */
   INVERT = 'invert',
   SPACE = 'space',
 }
@@ -69,8 +68,8 @@ export const DEFAULTS: ResolvedOptions = {
   heavyFonts: ['P5Display'],
   background: {},
   outline: { enabled: false, color: Colors.WHITE, radius: 3 },
-  mergeBoxes: false,
-  mergeOverlap: 0.2,
+  mergeBoxes: true,
+  mergeOverlap: 0.05,
 };
 
 export function resolveOptions(options: Options = {}): ResolvedOptions {

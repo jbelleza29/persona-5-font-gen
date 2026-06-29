@@ -18,15 +18,15 @@ describe('computeLayout', () => {
     expect(r.glyphs[0].mode).toBe(CharMode.FIRST);
   });
 
-  it('keeps at most one red letter per 5-window and never at window boundary', () => {
+  it('keeps at most one inverted accent per 5-window and never at window boundary', () => {
     for (let seed = 0; seed < 40; seed++) {
       const r = layout('ABCDEFGHIJKLMNOP', seed); // no spaces -> glyph idx == char idx
-      const reds = r.glyphs
+      const accents = r.glyphs
         .map((g, i) => ({ g, i }))
-        .filter(({ g }) => g.mode === CharMode.RED)
+        .filter(({ g }) => g.mode === CharMode.INVERT)
         .map(({ i }) => i);
       const windows = new Map<number, number>();
-      for (const idx of reds) {
+      for (const idx of accents) {
         expect(idx).toBeGreaterThanOrEqual(1);
         expect((idx - 1) % 5).not.toBe(4); // boundary index is never eligible
         const w = Math.floor((idx - 1) / 5);
@@ -48,12 +48,12 @@ describe('computeLayout', () => {
     }
   });
 
-  it('first glyph is white with a red outline and the expected pivot', () => {
+  it('first glyph is white with a black outline and the expected pivot', () => {
     const r = layout('PERSONA', 3);
     const first = r.glyphs[0];
     expect(first.text).not.toBeNull();
     expect(first.text!.fill).toBe(Colors.WHITE);
-    expect(first.text!.outlineColor).toBe(Colors.RED);
+    expect(first.text!.outlineColor).toBe(Colors.BLACK);
     // pivot formula: cy = padding + outterHeight/2; cx = padding + outterWidth/2 (first offset == padding)
     expect(first.cy).toBeCloseTo(opts.padding + first.outterHeight / 2, 6);
     expect(first.cx).toBeCloseTo(opts.padding + first.outterWidth / 2, 6);
@@ -72,7 +72,7 @@ describe('computeLayout', () => {
   });
 
   it('every non-space glyph has a brand outline color', () => {
-    const allowed = [Colors.BLACK, Colors.WHITE, Colors.RED];
+    const allowed = [Colors.BLACK, Colors.WHITE];
     const r = layout('PERSONA', 3);
     for (const g of r.glyphs) {
       if (g.mode === CharMode.SPACE) continue;

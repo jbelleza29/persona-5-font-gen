@@ -96,8 +96,8 @@ describe('renderSvg', () => {
     Math.max(...[...s.matchAll(/stroke-width="([\d.]+)"/g)].map((m) => Number(m[1])));
 
   it('merge mode thickens the outline but keeps letters in place', () => {
-    const normal = computeLayout('TAKE', resolveOptions({}), metrics, mulberry32(1));
-    const merged = computeLayout('TAKE', resolveOptions({ mergeBoxes: true }), metrics, mulberry32(1));
+    const normal = computeLayout('TAKE', resolveOptions({ mergeBoxes: false }), metrics, mulberry32(1));
+    const merged = computeLayout('TAKE', resolveOptions({ mergeBoxes: true, mergeOverlap: 0.3 }), metrics, mulberry32(1));
 
     // letters do not move (same baseline position)
     for (let i = 0; i < normal.glyphs.length; i++) {
@@ -106,7 +106,9 @@ describe('renderSvg', () => {
     }
 
     // the tracing outline gets thicker so neighbors fuse
-    expect(maxStroke(svg('TAKE', { mergeBoxes: true }))).toBeGreaterThan(maxStroke(svg('TAKE')));
+    expect(maxStroke(svg('TAKE', { mergeBoxes: true, mergeOverlap: 0.3 }))).toBeGreaterThan(
+      maxStroke(svg('TAKE', { mergeBoxes: false })),
+    );
   });
 
   it('mergeOverlap dials the outline thickness', () => {
