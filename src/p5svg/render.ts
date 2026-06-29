@@ -83,11 +83,11 @@ export function renderSvg(
     parts.push(renderBurst(w, h));
   }
 
-  // Each letter is drawn as a contour silhouette: an outer paper edge (optional),
-  // a thick outline that traces the letter, then the letter fill. Drawn in passes
-  // so that, when thick enough to touch, outlines fuse cleanly beneath the fills.
+  // Middle letters are boxes; the leading/trailing letters trace the letter contour.
+  // Drawn in z-ordered passes: edge -> black -> inner panel -> letter fill.
   const letters = glyphs.filter((g) => g.text);
   const mergeBoost = opts.mergeBoxes ? opts.mergeOverlap : 0;
+  const edgeColor = safeColor(opts.outline.color, Colors.WHITE)!;
 
   const textLayer = (g: (typeof glyphs)[number], color: string, strokeW: number): string => {
     const t = g.text!;
@@ -102,22 +102,40 @@ export function renderSvg(
     )} ${n(g.cx)} ${n(g.cy)})">${esc(t.char)}</text>`;
   };
 
+  const rectEl = (g: (typeof glyphs)[number], r: (typeof g.rects)[number], fill: string, grow = 0) =>
+    `<rect x="${n(r.x - grow)}" y="${n(r.y - grow)}" width="${n(r.width + 2 * grow)}" height="${n(
+      r.height + 2 * grow,
+    )}" fill="${fill}" transform="rotate(${n(r.angle)} ${n(g.cx)} ${n(g.cy)})"/>`;
+
+  const contourW = (g: (typeof glyphs)[number]) => g.text!.fontSize * (OUTLINE_FRAC + mergeBoost);
+
   parts.push('<g id="glyphs">');
   // pass 1: outer paper edge (only when outline enabled)
   if (opts.outline.enabled) {
     for (const g of letters) {
-      const t = g.text!;
-      const outline = t.fontSize * (OUTLINE_FRAC + mergeBoost);
-      const edge = outline + t.fontSize * EDGE_FRAC;
-      parts.push(textLayer(g, safeColor(t.edgeColor, Colors.WHITE)!, 2 * edge));
+      if (g.style === 'contour') {
+        const edge = contourW(g) + g.text!.fontSize * EDGE_FRAC;
+        parts.push(textLayer(g, safeColor(g.text!.edgeColor, Colors.WHITE)!, 2 * edge));
+      } else {
+        const box = g.rects.find((r) => r.role === 'box');
+        if (box) parts.push(rectEl(g, box, edgeColor, g.text!.fontSize * EDGE_FRAC));
+      }
     }
   }
-  // pass 2: thick outline tracing each letter (fuses when merged)
+  // pass 2: black box / black contour
   for (const g of letters) {
-    const t = g.text!;
-    parts.push(textLayer(g, safeColor(t.outlineColor, Colors.BLACK)!, 2 * t.fontSize * (OUTLINE_FRAC + mergeBoost)));
+    if (g.style === 'contour') {
+      parts.push(textLayer(g, safeColor(g.text!.outlineColor, Colors.BLACK)!, 2 * contourW(g)));
+    } else {
+      for (const r of g.rects) if (r.role === 'box') parts.push(rectEl(g, r, r.fill));
+    }
   }
-  // pass 3: the letter itself
+  // pass 3: white inner panels (inverted box letters)
+  for (const g of letters) {
+    if (g.style !== 'box') continue;
+    for (const r of g.rects) if (r.role === 'inner') parts.push(rectEl(g, r, r.fill));
+  }
+  // pass 4: the letters
   for (const g of letters) {
     parts.push(textLayer(g, safeColor(g.text!.fill, Colors.WHITE)!, 0));
   }

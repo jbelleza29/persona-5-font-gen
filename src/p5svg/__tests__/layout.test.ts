@@ -59,6 +59,18 @@ describe('computeLayout', () => {
     expect(first.cx).toBeCloseTo(opts.padding + first.outterWidth / 2, 6);
   });
 
+  it('uses contour for the leading/trailing letters and boxes in between', () => {
+    const r = layout('TAKE YOUR HEART', 3);
+    const letters = r.glyphs.filter((g) => g.mode !== CharMode.SPACE);
+    expect(letters[0].style).toBe('contour');
+    expect(letters[letters.length - 1].style).toBe('contour');
+    expect(letters[0].rects).toHaveLength(0);
+    // at least one interior letter is a box with a black rect
+    const interior = letters.slice(1, -1);
+    expect(interior.every((g) => g.style === 'box')).toBe(true);
+    expect(interior.some((g) => g.rects.some((x) => x.role === 'box'))).toBe(true);
+  });
+
   it('every non-space glyph has a brand outline color', () => {
     const allowed = [Colors.BLACK, Colors.WHITE, Colors.RED];
     const r = layout('PERSONA', 3);

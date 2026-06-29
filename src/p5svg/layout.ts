@@ -3,6 +3,7 @@ import {
   Colors,
   LayoutResult,
   PlacedGlyph,
+  RectLayer,
   ResolvedOptions,
 } from './types';
 import { GlyphMetricsProvider, GlyphSize } from './metrics';
@@ -13,6 +14,7 @@ const BACKGROUND_SCALE = 1.2; // other glyphs' slot
 const RED_RANGE = 5; // at most one red letter per window of 5
 const THIN_PROB = 0.33; // chance a letter is "thin" when allowed (baseline leans thick)
 const LOWER_PROB = 0.4; // chance a (non-first) letter renders lowercase
+const INNER_SCALE = 0.85; // white inner panel size for inverted box letters
 
 interface CharSpec {
   isSpace: boolean;
@@ -181,20 +183,33 @@ export function computeLayout(
   }
   const height = contentHeight + padding * 2;
 
+  // Leading and trailing letters use the contour style; everything else is boxey.
+  let firstIdx = -1;
+  let lastIdx = -1;
+  for (let i = 0; i < specs.length; i++) {
+    if (!specs[i].isSpace) {
+      if (firstIdx < 0) firstIdx = i;
+      lastIdx = i;
+    }
+  }
+
   const glyphs: PlacedGlyph[] = [];
   let offset = padding;
   let maxRight = padding;
-  for (const s of specs) {
+  for (let i = 0; i < specs.length; i++) {
+    const s = specs[i];
     if (s.isSpace) {
       glyphs.push({
         char: ' ',
         mode: CharMode.SPACE,
+        style: 'box',
         angle: 0,
         scale: 1,
         outterWidth: 0,
         outterHeight: 0,
         cx: offset,
         cy: padding,
+        rects: [],
         text: null,
       });
       offset += 2 * gutter;
@@ -209,8 +224,9 @@ export function computeLayout(
     const textX = offset + (ow - s.size.width) / 2 - s.size.left;
     // baseline y so the ink box is centered vertically in the canvas
     const textY = height / 2 + (s.size.ascent - s.size.descent) / 2;
+    const style: 'box' | 'contour' = i === firstIdx || i === lastIdx ? 'contour' : 'box';
 
-    // The black silhouette traces the letter; inverted letters trace it in white.
+    // Contour colors: black traces the letter; inverted traces in white; first in red.
     let outlineColor: string;
     let edgeColor: string;
     if (s.mode === CharMode.INVERT) {
@@ -224,15 +240,49 @@ export function computeLayout(
       edgeColor = Colors.WHITE;
     }
 
+    const rects: RectLayer[] = [];
+    let rightEdge = offset + ow;
+    if (style === 'box') {
+      // Merge mode widens the black box so neighbors fuse; letters keep their spot.
+      const extend = opts.mergeBoxes ? gutter + ow * opts.mergeOverlap : 0;
+      const boxX = offset - extend / 2;
+      const boxW = ow + extend;
+      rects.push({
+        x: boxX,
+        y: (height - oh) / 2,
+        width: boxW,
+        height: oh,
+        fill: Colors.BLACK,
+        angle: s.angle + 1,
+        role: 'box',
+      });
+      if (s.mode === CharMode.INVERT) {
+        const iw = ow * INNER_SCALE;
+        const ih = oh * INNER_SCALE;
+        rects.push({
+          x: offset + (ow - iw) / 2,
+          y: (height - ih) / 2,
+          width: iw,
+          height: ih,
+          fill: Colors.WHITE,
+          angle: s.angle,
+          role: 'inner',
+        });
+      }
+      rightEdge = boxX + boxW;
+    }
+
     glyphs.push({
       char: s.char,
       mode: s.mode,
+      style,
       angle: s.angle,
       scale: s.scale,
       outterWidth: ow,
       outterHeight: oh,
       cx,
       cy,
+      rects,
       text: {
         x: textX,
         y: textY,
@@ -246,7 +296,7 @@ export function computeLayout(
       },
     });
 
-    maxRight = Math.max(maxRight, offset + ow);
+    maxRight = Math.max(maxRight, rightEdge);
     offset += ow + gutter;
   }
 

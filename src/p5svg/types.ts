@@ -95,6 +95,18 @@ export function resolveOptions(options: Options = {}): ResolvedOptions {
   };
 }
 
+/** A rotated rectangle layer (box style). All layers share the glyph pivot. */
+export interface RectLayer {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fill: string;
+  angle: number;
+  /** 'box' = black background; 'inner' = white inner panel (inverted letters). */
+  role: 'box' | 'inner';
+}
+
 export interface TextLayer {
   x: number;
   y: number;
@@ -102,7 +114,7 @@ export interface TextLayer {
   fontFamily: string;
   /** Letter fill color. */
   fill: string;
-  /** Thick silhouette that traces the letter (the "box" replacement). */
+  /** Contour color tracing the letter (contour style only). */
   outlineColor: string;
   /** Outer paper edge color (drawn when outline is enabled). */
   edgeColor: string;
@@ -113,6 +125,8 @@ export interface TextLayer {
 export interface PlacedGlyph {
   char: string;
   mode: CharMode;
+  /** 'box' = rectangular background; 'contour' = outline tracing the letter (edges). */
+  style: 'box' | 'contour';
   /** Base per-char angle. */
   angle: number;
   scale: number;
@@ -121,6 +135,8 @@ export interface PlacedGlyph {
   /** Rotation pivot for the letter. */
   cx: number;
   cy: number;
+  /** Box-style background rects (empty for contour style). */
+  rects: RectLayer[];
   text: TextLayer | null;
 }
 
