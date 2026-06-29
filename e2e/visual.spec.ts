@@ -32,14 +32,13 @@ test('background and outline toggles add their layers', async ({ page }) => {
   await expect(svg.locator('#paperEdge')).toHaveCount(1);
 });
 
-test('default PNG export preserves transparency (alpha 0 in top padding)', async ({ page }) => {
-  const alpha = await page.locator('.preview__svg svg').evaluate(async (el) => {
+test('PNG rasterization: transparent top corner + opaque ink in content', async ({ page }) => {
+  const stats = await page.locator('.preview__svg svg').evaluate(async (el) => {
     const svgEl = el as unknown as SVGSVGElement;
     const w = Math.ceil(svgEl.viewBox.baseVal.width);
     const h = Math.ceil(svgEl.viewBox.baseVal.height);
     const markup = new XMLSerializer().serializeToString(svgEl);
-    const blob = new Blob([markup], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }));
     const img = new Image();
     await new Promise<void>((res, rej) => {
       img.onload = () => res();
@@ -52,37 +51,14 @@ test('default PNG export preserves transparency (alpha 0 in top padding)', async
     const ctx = canvas.getContext('2d')!;
     ctx.drawImage(img, 0, 0);
     URL.revokeObjectURL(url);
-    // sample a pixel in the top padding band (above the glyph row)
-    const px = ctx.getImageData(Math.floor(w / 2), 2, 1, 1).data;
-    return px[3];
-  });
-  expect(alpha).toBe(0);
-});
 
-test('content region has opaque ink (glyphs actually rasterize)', async ({ page }) => {
-  const opaque = await page.locator('.preview__svg svg').evaluate(async (el) => {
-    const svgEl = el as unknown as SVGSVGElement;
-    const w = Math.ceil(svgEl.viewBox.baseVal.width);
-    const h = Math.ceil(svgEl.viewBox.baseVal.height);
-    const markup = new XMLSerializer().serializeToString(svgEl);
-    const blob = new Blob([markup], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    await new Promise<void>((res, rej) => {
-      img.onload = () => res();
-      img.onerror = () => rej(new Error('img load failed'));
-      img.src = url;
-    });
-    const canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(img, 0, 0);
-    URL.revokeObjectURL(url);
     const data = ctx.getImageData(0, 0, w, h).data;
-    let count = 0;
-    for (let i = 3; i < data.length; i += 4) if (data[i] > 0) count++;
-    return count;
+    let opaque = 0;
+    for (let i = 3; i < data.length; i += 4) if (data[i] > 0) opaque++;
+    // sample the top padding band (above the glyph row) for transparency
+    const cornerAlpha = data[(2 * w + Math.floor(w / 2)) * 4 + 3];
+    return { opaque, cornerAlpha };
   });
-  expect(opaque).toBeGreaterThan(100);
+  expect(stats.cornerAlpha).toBe(0); // default export preserves transparency
+  expect(stats.opaque).toBeGreaterThan(100); // glyphs actually rasterized
 });
