@@ -50,10 +50,10 @@ describe('renderSvg', () => {
     expect(s).toContain('id="bg-burst"');
   });
 
-  it('adds an outer paper-edge layer only when outline is enabled', () => {
-    const off = (svg('ABC').match(/<text/g) ?? []).length;
-    const on = (svg('ABC', { outline: { enabled: true } }).match(/<text/g) ?? []).length;
-    expect(on).toBeGreaterThan(off); // extra edge text layer per letter
+  it('adds white box edges only when outline is enabled', () => {
+    const off = (svg('ABC').match(/<rect/g) ?? []).length;
+    const on = (svg('ABC', { outline: { enabled: true } }).match(/<rect/g) ?? []).length;
+    expect(on).toBeGreaterThan(off); // extra white edge rect behind each box
   });
 
   it('uses only the three brand colors inside the glyph collage', () => {
@@ -72,8 +72,8 @@ describe('renderSvg', () => {
     const s = renderSvg(layout, opts, '');
     const pivotEnd = `${round2(first.cx)} ${round2(first.cy)})`;
     const count = s.split(pivotEnd).length - 1;
-    // edge + outline + fill layers, all sharing the exact same pivot
-    expect(count).toBe(3);
+    // contour stroke + fill (+ connector/edge) all share the exact same pivot
+    expect(count).toBeGreaterThanOrEqual(2);
   });
 
   it('is deterministic for a fixed seed + options', () => {

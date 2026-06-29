@@ -255,6 +255,35 @@ export function computeLayout(
         });
       }
       rightEdge = boxX + boxW;
+    } else {
+      // Contour edge letter: cheat a partial box on the side that has a neighbor so
+      // it fuses into the row instead of floating with an awkward gap.
+      const bridge = gutter + ow * opts.mergeOverlap + 4;
+      const leadingNeighbor = i === firstIdx && i + 1 <= lastIdx && !specs[i + 1].isSpace;
+      const trailingNeighbor = i === lastIdx && i - 1 >= firstIdx && !specs[i - 1].isSpace;
+      if (leadingNeighbor) {
+        const start = offset + ow * 0.4;
+        rects.push({
+          x: start,
+          y: (height - oh) / 2,
+          width: offset + ow + bridge - start,
+          height: oh,
+          fill: Colors.BLACK,
+          angle: s.angle + 1,
+          role: 'box',
+        });
+      } else if (trailingNeighbor) {
+        const start = offset - bridge;
+        rects.push({
+          x: start,
+          y: (height - oh) / 2,
+          width: offset + ow * 0.6 - start,
+          height: oh,
+          fill: Colors.BLACK,
+          angle: s.angle + 1,
+          role: 'box',
+        });
+      }
     }
 
     glyphs.push({

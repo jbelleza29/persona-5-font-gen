@@ -64,7 +64,8 @@ describe('computeLayout', () => {
     const letters = r.glyphs.filter((g) => g.mode !== CharMode.SPACE);
     expect(letters[0].style).toBe('contour');
     expect(letters[letters.length - 1].style).toBe('contour');
-    expect(letters[0].rects).toHaveLength(0);
+    // edge letters have no white inner panel (they are not boxed letters)
+    expect(letters[0].rects.some((x) => x.role === 'inner')).toBe(false);
     // at least one interior letter is a box with a black rect
     const interior = letters.slice(1, -1);
     expect(interior.every((g) => g.style === 'box')).toBe(true);

@@ -110,24 +110,19 @@ export function renderSvg(
   const contourW = (g: (typeof glyphs)[number]) => g.text!.fontSize * (OUTLINE_FRAC + mergeBoost);
 
   parts.push('<g id="glyphs">');
-  // pass 1: outer paper edge (only when outline enabled)
+  // pass 1: white paper edge — boxes only (contour letters get no outer outline)
   if (opts.outline.enabled) {
     for (const g of letters) {
-      if (g.style === 'contour') {
-        const edge = contourW(g) + g.text!.fontSize * EDGE_FRAC;
-        parts.push(textLayer(g, safeColor(g.text!.edgeColor, Colors.WHITE)!, 2 * edge));
-      } else {
-        const box = g.rects.find((r) => r.role === 'box');
-        if (box) parts.push(rectEl(g, box, edgeColor, g.text!.fontSize * EDGE_FRAC));
+      for (const r of g.rects) {
+        if (r.role === 'box') parts.push(rectEl(g, r, edgeColor, g.text!.fontSize * EDGE_FRAC));
       }
     }
   }
-  // pass 2: black box / black contour
+  // pass 2: black boxes + connector bits, then the contour stroke
   for (const g of letters) {
+    for (const r of g.rects) if (r.role === 'box') parts.push(rectEl(g, r, r.fill));
     if (g.style === 'contour') {
       parts.push(textLayer(g, safeColor(g.text!.outlineColor, Colors.BLACK)!, 2 * contourW(g)));
-    } else {
-      for (const r of g.rects) if (r.role === 'box') parts.push(rectEl(g, r, r.fill));
     }
   }
   // pass 3: white inner panels (inverted box letters)
