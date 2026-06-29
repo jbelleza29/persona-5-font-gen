@@ -12,7 +12,7 @@ const BORDER_SCALE = 1.4; // FIRST glyph outer box
 const BACKGROUND_SCALE = 1.2; // other glyphs' box
 const RED_RANGE = 5; // at most one red letter per window of 5
 const FIRST_BG_SCALE = 0.85; // red inner box on the first glyph
-const MERGE_ADVANCE = 0.7; // box advance fraction in merge mode (overlap so boxes fuse)
+const MERGE_BOX_OVERLAP = 0.4; // extra black-box width (fraction of box) in merge mode so boxes fuse
 
 interface CharSpec {
   isSpace: boolean;
@@ -150,6 +150,11 @@ export function computeLayout(
     const oh = s.outterHeight;
     const cx = offset + ow / 2;
     const cy = padding + oh / 2;
+    // Merge mode widens only the black box (centered on the glyph) so neighbors
+    // overlap and fuse, while letters keep their normal spacing.
+    const extend = opts.mergeBoxes ? gutter + ow * MERGE_BOX_OVERLAP : 0;
+    const boxX = offset - extend / 2;
+    const boxW = ow + extend;
     const textX = offset + (ow - s.size.width) / 2 - s.size.left;
     // baseline y so the ink box is centered vertically in the canvas
     const textY = height / 2 + (s.size.ascent - s.size.descent) / 2;
@@ -176,9 +181,9 @@ export function computeLayout(
 
     if (s.mode === CharMode.FIRST) {
       glyph.rects.push({
-        x: offset,
+        x: boxX,
         y: (height - oh) / 2,
-        width: ow,
+        width: boxW,
         height: oh,
         fill: Colors.BLACK,
         angle: s.angle - 5,
@@ -197,9 +202,9 @@ export function computeLayout(
       });
     } else {
       glyph.rects.push({
-        x: offset,
+        x: boxX,
         y: (height - oh) / 2,
-        width: ow,
+        width: boxW,
         height: oh,
         fill: Colors.BLACK,
         angle: s.angle + 1,
@@ -208,9 +213,8 @@ export function computeLayout(
     }
 
     glyphs.push(glyph);
-    maxRight = Math.max(maxRight, offset + ow);
-    // Merge mode overlaps boxes so they fuse into one connected shape.
-    offset += opts.mergeBoxes ? ow * MERGE_ADVANCE : ow + gutter;
+    maxRight = Math.max(maxRight, boxX + boxW);
+    offset += ow + gutter; // letters keep normal spacing in every mode
   }
 
   const width = maxRight + padding;

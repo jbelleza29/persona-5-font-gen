@@ -94,16 +94,25 @@ describe('renderSvg', () => {
     expect(svg('ABC', { background: { fill: 'rgb(10, 20, 30)' } })).toContain('id="bg-fill"');
   });
 
-  it('merge mode overlaps per-letter boxes into a tighter layout', () => {
-    const w1 = computeLayout('TAKE', resolveOptions({}), metrics, mulberry32(1)).width;
-    const w2 = computeLayout('TAKE', resolveOptions({ mergeBoxes: true }), metrics, mulberry32(1)).width;
-    expect(w2).toBeLessThan(w1); // boxes overlap -> narrower
+  it('merge mode widens black boxes to fuse them but keeps letters in place', () => {
+    const normal = computeLayout('TAKE', resolveOptions({}), metrics, mulberry32(1));
+    const merged = computeLayout('TAKE', resolveOptions({ mergeBoxes: true }), metrics, mulberry32(1));
 
-    // boxes stay per-letter (rotated), not collapsed into a single shape
-    const merged = svg('TAKE', { mergeBoxes: true });
-    const rotatedBlack = [...merged.matchAll(/<rect[^>]*fill="#0F0F0F"[^>]*>/g)].filter((m) =>
-      m[0].includes('rotate'),
-    );
+    // letters do not move (same baseline position)
+    for (let i = 0; i < normal.glyphs.length; i++) {
+      expect(merged.glyphs[i].text?.x ?? 0).toBeCloseTo(normal.glyphs[i].text?.x ?? 0, 6);
+      expect(merged.glyphs[i].text?.y ?? 0).toBeCloseTo(normal.glyphs[i].text?.y ?? 0, 6);
+    }
+
+    // black boxes get wider so neighbors overlap and fuse
+    const boxWidth = (r: typeof normal) =>
+      r.glyphs[1].rects.find((x) => x.role === 'box')!.width;
+    expect(boxWidth(merged)).toBeGreaterThan(boxWidth(normal));
+
+    // still per-letter rotated boxes (not one collapsed shape)
+    const rotatedBlack = [...svg('TAKE', { mergeBoxes: true }).matchAll(
+      /<rect[^>]*fill="#0F0F0F"[^>]*>/g,
+    )].filter((m) => m[0].includes('rotate'));
     expect(rotatedBlack.length).toBeGreaterThan(1);
   });
 
