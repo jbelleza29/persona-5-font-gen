@@ -95,24 +95,17 @@ export function resolveOptions(options: Options = {}): ResolvedOptions {
   };
 }
 
-/** A rotated rectangle layer. All layers of a glyph share one pivot (cx, cy). */
-export interface RectLayer {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  fill: string;
-  angle: number;
-  /** 'box' = the black background (suppressed in merge mode); 'accent' = red overlay. */
-  role: 'box' | 'accent';
-}
-
 export interface TextLayer {
   x: number;
   y: number;
   fontSize: number;
   fontFamily: string;
+  /** Letter fill color. */
   fill: string;
+  /** Thick silhouette that traces the letter (the "box" replacement). */
+  outlineColor: string;
+  /** Outer paper edge color (drawn when outline is enabled). */
+  edgeColor: string;
   angle: number;
   char: string;
 }
@@ -120,15 +113,14 @@ export interface TextLayer {
 export interface PlacedGlyph {
   char: string;
   mode: CharMode;
-  /** Base per-char angle before per-layer offsets. */
+  /** Base per-char angle. */
   angle: number;
   scale: number;
   outterWidth: number;
   outterHeight: number;
-  /** Shared rotation pivot reused by every layer of this glyph. */
+  /** Rotation pivot for the letter. */
   cx: number;
   cy: number;
-  rects: RectLayer[];
   text: TextLayer | null;
 }
 

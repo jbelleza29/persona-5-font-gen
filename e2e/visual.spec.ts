@@ -9,27 +9,27 @@ test.beforeEach(async ({ page }) => {
 test('renders a styled P5 SVG for the default text', async ({ page }) => {
   const svg = page.locator('.preview__svg svg');
   await expect(svg.locator('#glyphs')).toBeAttached();
-  // collage has letters and at least one box
+  // letters are drawn as stacked text layers (outline + fill), so > one per letter
   expect(await svg.locator('#glyphs text').count()).toBeGreaterThan(0);
-  expect(await svg.locator('#glyphs rect').count()).toBeGreaterThan(0);
   // self-contained: embedded font face present
   const markup = await svg.evaluate((el) => el.outerHTML);
   expect(markup).toContain('@font-face');
 });
 
-test('default output is transparent with no background or outline', async ({ page }) => {
+test('default output is transparent with no background', async ({ page }) => {
   const svg = page.locator('.preview__svg svg');
   await expect(svg.locator('#bg-fill')).toHaveCount(0);
   await expect(svg.locator('#bg-burst')).toHaveCount(0);
-  await expect(svg.locator('#paperEdge')).toHaveCount(0);
 });
 
 test('background and outline toggles add their layers', async ({ page }) => {
+  const svg = page.locator('.preview__svg svg');
+  const textsBefore = await svg.locator('#glyphs text').count();
   await page.getByText('P5 burst rings').click();
   await page.getByText('White cut-paper outline').click();
-  const svg = page.locator('.preview__svg svg');
   await expect(svg.locator('#bg-burst')).toHaveCount(1);
-  await expect(svg.locator('#paperEdge')).toHaveCount(1);
+  // outline adds an extra paper-edge text layer per letter
+  await expect.poll(() => svg.locator('#glyphs text').count()).toBeGreaterThan(textsBefore);
 });
 
 test('PNG rasterization: transparent top corner + opaque ink in content', async ({ page }) => {

@@ -50,12 +50,10 @@ describe('renderSvg', () => {
     expect(s).toContain('id="bg-burst"');
   });
 
-  it('emits the paperEdge filter only when outline is enabled', () => {
-    expect(svg('ABC')).not.toContain('paperEdge');
-    const s = svg('ABC', { outline: { enabled: true } });
-    expect(s).toContain('<filter id="paperEdge"');
-    expect(s).toContain('filter="url(#paperEdge)"');
-    expect(s).toContain('feMorphology');
+  it('adds an outer paper-edge layer only when outline is enabled', () => {
+    const off = (svg('ABC').match(/<text/g) ?? []).length;
+    const on = (svg('ABC', { outline: { enabled: true } }).match(/<text/g) ?? []).length;
+    expect(on).toBeGreaterThan(off); // extra edge text layer per letter
   });
 
   it('uses only the three brand colors inside the glyph collage', () => {
@@ -67,14 +65,14 @@ describe('renderSvg', () => {
     for (const f of fills) expect(allowed.has(f)).toBe(true);
   });
 
-  it('rotates all 3 first-glyph layers about one shared pivot', () => {
-    const opts = resolveOptions();
+  it('draws all first-glyph layers about one shared pivot', () => {
+    const opts = resolveOptions({ outline: { enabled: true } });
     const layout = computeLayout('PERSONA', opts, metrics, mulberry32(3));
     const first = layout.glyphs[0];
     const s = renderSvg(layout, opts, '');
     const pivotEnd = `${round2(first.cx)} ${round2(first.cy)})`;
     const count = s.split(pivotEnd).length - 1;
-    // 2 rects + 1 text, all sharing the exact same pivot coordinates
+    // edge + outline + fill layers, all sharing the exact same pivot
     expect(count).toBe(3);
   });
 
@@ -94,7 +92,10 @@ describe('renderSvg', () => {
     expect(svg('ABC', { background: { fill: 'rgb(10, 20, 30)' } })).toContain('id="bg-fill"');
   });
 
-  it('merge mode widens black boxes to fuse them but keeps letters in place', () => {
+  const maxStroke = (s: string) =>
+    Math.max(...[...s.matchAll(/stroke-width="([\d.]+)"/g)].map((m) => Number(m[1])));
+
+  it('merge mode thickens the outline but keeps letters in place', () => {
     const normal = computeLayout('TAKE', resolveOptions({}), metrics, mulberry32(1));
     const merged = computeLayout('TAKE', resolveOptions({ mergeBoxes: true }), metrics, mulberry32(1));
 
@@ -104,23 +105,14 @@ describe('renderSvg', () => {
       expect(merged.glyphs[i].text?.y ?? 0).toBeCloseTo(normal.glyphs[i].text?.y ?? 0, 6);
     }
 
-    // black boxes get wider so neighbors overlap and fuse
-    const boxWidth = (r: typeof normal) =>
-      r.glyphs[1].rects.find((x) => x.role === 'box')!.width;
-    expect(boxWidth(merged)).toBeGreaterThan(boxWidth(normal));
-
-    // still per-letter rotated boxes (not one collapsed shape)
-    const rotatedBlack = [...svg('TAKE', { mergeBoxes: true }).matchAll(
-      /<rect[^>]*fill="#0F0F0F"[^>]*>/g,
-    )].filter((m) => m[0].includes('rotate'));
-    expect(rotatedBlack.length).toBeGreaterThan(1);
+    // the tracing outline gets thicker so neighbors fuse
+    expect(maxStroke(svg('TAKE', { mergeBoxes: true }))).toBeGreaterThan(maxStroke(svg('TAKE')));
   });
 
-  it('mergeOverlap dials the fused box width', () => {
-    const boxWidth = (overlap: number) =>
-      computeLayout('TAKE', resolveOptions({ mergeBoxes: true, mergeOverlap: overlap }), metrics, mulberry32(1))
-        .glyphs[1].rects.find((x) => x.role === 'box')!.width;
-    expect(boxWidth(0.5)).toBeGreaterThan(boxWidth(0.1));
+  it('mergeOverlap dials the outline thickness', () => {
+    const stroke = (overlap: number) =>
+      maxStroke(svg('TAKE', { mergeBoxes: true, mergeOverlap: overlap }));
+    expect(stroke(0.5)).toBeGreaterThan(stroke(0.1));
   });
 
   it('injects the provided font-face CSS into <defs>', () => {

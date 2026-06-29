@@ -48,25 +48,27 @@ describe('computeLayout', () => {
     }
   });
 
-  it('first glyph has 2 rects (border + red bg) and a shared pivot', () => {
+  it('first glyph is white with a red outline and the expected pivot', () => {
     const r = layout('PERSONA', 3);
     const first = r.glyphs[0];
-    expect(first.rects).toHaveLength(2);
     expect(first.text).not.toBeNull();
+    expect(first.text!.fill).toBe(Colors.WHITE);
+    expect(first.text!.outlineColor).toBe(Colors.RED);
     // pivot formula: cy = padding + outterHeight/2; cx = padding + outterWidth/2 (first offset == padding)
     expect(first.cy).toBeCloseTo(opts.padding + first.outterHeight / 2, 6);
     expect(first.cx).toBeCloseTo(opts.padding + first.outterWidth / 2, 6);
   });
 
-  it('every non-space glyph has exactly one black box rect', () => {
+  it('every non-space glyph has a brand outline color', () => {
+    const allowed = [Colors.BLACK, Colors.WHITE, Colors.RED];
     const r = layout('PERSONA', 3);
     for (const g of r.glyphs) {
       if (g.mode === CharMode.SPACE) continue;
-      expect(g.rects.filter((x) => x.role === 'box')).toHaveLength(1);
+      expect(allowed).toContain(g.text!.outlineColor);
     }
   });
 
-  it('inverted glyphs are a black letter on a white box with a black border', () => {
+  it('inverted glyphs are a black letter with a white outline', () => {
     let inverted = null as ReturnType<typeof layout>['glyphs'][number] | null;
     for (let seed = 0; seed < 80 && !inverted; seed++) {
       inverted =
@@ -74,8 +76,8 @@ describe('computeLayout', () => {
     }
     expect(inverted).not.toBeNull();
     expect(inverted!.text?.fill).toBe(Colors.BLACK);
-    expect(inverted!.rects.find((x) => x.role === 'box')!.fill).toBe(Colors.BLACK);
-    expect(inverted!.rects.find((x) => x.role === 'accent')!.fill).toBe(Colors.WHITE);
+    expect(inverted!.text?.outlineColor).toBe(Colors.WHITE);
+    expect(inverted!.text?.edgeColor).toBe(Colors.BLACK);
   });
 
   it('mixes upper and lower case, keeping the first letter uppercase', () => {
