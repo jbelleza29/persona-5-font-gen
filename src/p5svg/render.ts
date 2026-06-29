@@ -67,8 +67,18 @@ export function renderSvg(
     )}" height="${n(h)}">`,
   );
 
+  // Box-shadow style spread: dilate the black mass so crowded boxes/contours fuse.
+  const mergeRadius = opts.mergeBoxes ? opts.fontSize * (0.04 + opts.mergeOverlap) : 0;
+
   const defs: string[] = [];
   if (fontFaceCss) defs.push(`<style>${fontFaceCss}</style>`);
+  if (mergeRadius > 0) {
+    defs.push(
+      `<filter id="merge" x="-20%" y="-20%" width="140%" height="140%">` +
+        `<feMorphology operator="dilate" radius="${n(mergeRadius)}"/>` +
+        `</filter>`,
+    );
+  }
   if (defs.length) parts.push(`<defs>${defs.join('')}</defs>`);
 
   // z-stack: background fill -> burst -> glyphs
@@ -108,14 +118,16 @@ export function renderSvg(
   const contourW = (g: (typeof glyphs)[number]) => g.text!.fontSize * (OUTLINE_FRAC + mergeBoost);
 
   parts.push('<g id="glyphs">');
-  // pass 1: black boxes + connector bits, then the black contour stroke
+  // pass 1: the black mass (boxes + contour strokes), dilated so it fuses into one shape
+  parts.push(`<g${mergeRadius > 0 ? ' filter="url(#merge)"' : ''}>`);
   for (const g of letters) {
     for (const r of g.rects) if (r.role === 'box') parts.push(rectEl(g, r, r.fill));
     if (g.style === 'contour') {
       parts.push(textLayer(g, Colors.BLACK, 2 * contourW(g)));
     }
   }
-  // pass 2: white inner panels (inverted box letters)
+  parts.push('</g>');
+  // pass 2: white inner panels (inverted box letters), on top of the merged black
   for (const g of letters) {
     if (g.style !== 'box') continue;
     for (const r of g.rects) if (r.role === 'inner') parts.push(rectEl(g, r, r.fill));

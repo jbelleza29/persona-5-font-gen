@@ -18,7 +18,7 @@ export default function App() {
     fillColor: '#e5191c',
     burst: false,
     mergeBoxes: true,
-    mergeOverlap: 0.05,
+    mergeOverlap: 0.02,
     pngScale: 2,
   });
   const [seed, setSeed] = useState(randomSeed);

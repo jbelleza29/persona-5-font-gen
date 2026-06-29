@@ -115,7 +115,7 @@ export default function Controls(props: Props) {
               type="range"
               min={0}
               max={0.8}
-              step={0.05}
+              step={0.01}
               value={mergeOverlap}
               onChange={(e) => onChange('mergeOverlap', Number(e.target.value))}
             />
