@@ -33,6 +33,8 @@ export interface Options {
   fontFamily?: string;
   background?: Background;
   outline?: Outline;
+  /** Render one continuous black box behind all letters instead of per-letter boxes. */
+  mergeBoxes?: boolean;
 }
 
 export interface ResolvedOptions {
@@ -43,6 +45,7 @@ export interface ResolvedOptions {
   fontFamily: string;
   background: Background;
   outline: Required<Outline>;
+  mergeBoxes: boolean;
 }
 
 export const DEFAULTS: ResolvedOptions = {
@@ -53,6 +56,7 @@ export const DEFAULTS: ResolvedOptions = {
   fontFamily: 'P5Display',
   background: {},
   outline: { enabled: false, color: Colors.WHITE, radius: 3 },
+  mergeBoxes: false,
 };
 
 export function resolveOptions(options: Options = {}): ResolvedOptions {
@@ -64,6 +68,7 @@ export function resolveOptions(options: Options = {}): ResolvedOptions {
     fontFamily: options.fontFamily ?? DEFAULTS.fontFamily,
     background: { ...DEFAULTS.background, ...options.background },
     outline: { ...DEFAULTS.outline, ...options.outline },
+    mergeBoxes: options.mergeBoxes ?? DEFAULTS.mergeBoxes,
   };
 }
 
@@ -75,6 +80,8 @@ export interface RectLayer {
   height: number;
   fill: string;
   angle: number;
+  /** 'box' = the black background (suppressed in merge mode); 'accent' = red overlay. */
+  role: 'box' | 'accent';
 }
 
 export interface TextLayer {
@@ -105,4 +112,6 @@ export interface LayoutResult {
   width: number;
   height: number;
   glyphs: PlacedGlyph[];
+  /** Single black bar drawn instead of per-glyph boxes when mergeBoxes is on. */
+  mergedBar: RectLayer | null;
 }

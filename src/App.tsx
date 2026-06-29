@@ -21,6 +21,7 @@ export default function App() {
     fillColor: '#e5191c',
     burst: false,
     outline: false,
+    mergeBoxes: false,
     pngScale: 2,
   });
   const [seed, setSeed] = useState(randomSeed);
@@ -65,6 +66,7 @@ export default function App() {
             burst: state.burst,
           },
           outline: { enabled: state.outline },
+          mergeBoxes: state.mergeBoxes,
         },
         { metrics: metricsRef.current, fontFaceCss: fontRef.current.fontFaceCss },
       );
@@ -81,6 +83,7 @@ export default function App() {
     state.fillColor,
     state.burst,
     state.outline,
+    state.mergeBoxes,
   ]);
 
   const onChange = <K extends keyof ControlsState>(key: K, value: ControlsState[K]) => {

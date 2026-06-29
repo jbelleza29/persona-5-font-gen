@@ -5,6 +5,7 @@ export interface ControlsState {
   fillColor: string;
   burst: boolean;
   outline: boolean;
+  mergeBoxes: boolean;
   pngScale: number;
 }
 
@@ -27,6 +28,7 @@ export default function Controls(props: Props) {
     fillColor,
     burst,
     outline,
+    mergeBoxes,
     pngScale,
     maxChars,
     canExport,
@@ -97,7 +99,15 @@ export default function Controls(props: Props) {
       </fieldset>
 
       <fieldset className="group">
-        <legend>Outline</legend>
+        <legend>Boxes</legend>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={mergeBoxes}
+            onChange={(e) => onChange('mergeBoxes', e.target.checked)}
+          />
+          Merge into one box
+        </label>
         <label className="check">
           <input
             type="checkbox"

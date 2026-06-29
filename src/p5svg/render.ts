@@ -94,9 +94,18 @@ export function renderSvg(
 
   const filterAttr = opts.outline.enabled ? ' filter="url(#paperEdge)"' : '';
   parts.push(`<g id="glyphs"${filterAttr}>`);
+  const merged = layout.mergedBar;
+  if (merged) {
+    parts.push(
+      `<rect id="merged-box" x="${n(merged.x)}" y="${n(merged.y)}" width="${n(
+        merged.width,
+      )}" height="${n(merged.height)}" fill="${merged.fill}"/>`,
+    );
+  }
   for (const g of glyphs) {
     const pivot = `${n(g.cx)} ${n(g.cy)}`;
     for (const r of g.rects) {
+      if (merged && r.role === 'box') continue; // replaced by the single merged box
       parts.push(
         `<rect x="${n(r.x)}" y="${n(r.y)}" width="${n(r.width)}" height="${n(
           r.height,
@@ -108,7 +117,7 @@ export function renderSvg(
       parts.push(
         `<text x="${n(t.x)}" y="${n(t.y)}" font-family="${opts.fontFamily}" font-weight="700" font-size="${n(
           t.fontSize,
-        )}" fill="${t.fill}" dominant-baseline="text-before-edge" text-anchor="start" transform="rotate(${n(
+        )}" fill="${t.fill}" dominant-baseline="alphabetic" text-anchor="start" transform="rotate(${n(
           t.angle,
         )} ${pivot})">${esc(t.char)}</text>`,
       );

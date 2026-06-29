@@ -94,6 +94,22 @@ describe('renderSvg', () => {
     expect(svg('ABC', { background: { fill: 'rgb(10, 20, 30)' } })).toContain('id="bg-fill"');
   });
 
+  it('merge mode draws one black bar and no rotated black boxes', () => {
+    const normal = svg('TAKE');
+    expect(normal).not.toContain('id="merged-box"');
+    const rotatedBlackNormal = [...normal.matchAll(/<rect[^>]*fill="#0F0F0F"[^>]*>/g)].filter((m) =>
+      m[0].includes('rotate'),
+    );
+    expect(rotatedBlackNormal.length).toBeGreaterThan(0);
+
+    const merged = svg('TAKE', { mergeBoxes: true });
+    expect(merged).toContain('id="merged-box"');
+    const rotatedBlackMerged = [...merged.matchAll(/<rect[^>]*fill="#0F0F0F"[^>]*>/g)].filter((m) =>
+      m[0].includes('rotate'),
+    );
+    expect(rotatedBlackMerged.length).toBe(0); // black boxes replaced by the one bar
+  });
+
   it('injects the provided font-face CSS into <defs>', () => {
     const css = "@font-face{font-family:'P5Display';src:url(data:font/woff2;base64,AAAA)}";
     const result = generateP5Svg('TAKE YOUR HEART', { seed: 7 }, { metrics, fontFaceCss: css });
