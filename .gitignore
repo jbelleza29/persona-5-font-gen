@@ -9,6 +9,4 @@ playwright-report/
 blob-report/
 .playwright/
 *.tsbuildinfo
-.omc/state/
-.omc/logs/
-.omc/research/
+.omc/
