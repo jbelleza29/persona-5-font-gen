@@ -78,9 +78,7 @@ function buildSpec(
         : Colors.WHITE;
   const size = metrics.measure(char, fontSize, opts.fontFamily, 'bold');
   const rot = rotatedBox(size.width, size.height, angle);
-  // INVERT needs the larger border box (like FIRST) for a black border + white inner.
-  const outter =
-    mode === CharMode.FIRST || mode === CharMode.INVERT ? BORDER_SCALE : BACKGROUND_SCALE;
+  const outter = mode === CharMode.FIRST ? BORDER_SCALE : BACKGROUND_SCALE;
 
   return {
     isSpace: false,
