@@ -33,8 +33,10 @@ export interface Options {
   fontFamily?: string;
   background?: Background;
   outline?: Outline;
-  /** Render one continuous black box behind all letters instead of per-letter boxes. */
+  /** Widen the black boxes so they overlap into one fused shape behind the letters. */
   mergeBoxes?: boolean;
+  /** Extra black-box width as a fraction of the box, in merge mode (more = more fusion). */
+  mergeOverlap?: number;
 }
 
 export interface ResolvedOptions {
@@ -46,6 +48,7 @@ export interface ResolvedOptions {
   background: Background;
   outline: Required<Outline>;
   mergeBoxes: boolean;
+  mergeOverlap: number;
 }
 
 export const DEFAULTS: ResolvedOptions = {
@@ -57,6 +60,7 @@ export const DEFAULTS: ResolvedOptions = {
   background: {},
   outline: { enabled: false, color: Colors.WHITE, radius: 3 },
   mergeBoxes: false,
+  mergeOverlap: 0.2,
 };
 
 export function resolveOptions(options: Options = {}): ResolvedOptions {
@@ -69,6 +73,7 @@ export function resolveOptions(options: Options = {}): ResolvedOptions {
     background: { ...DEFAULTS.background, ...options.background },
     outline: { ...DEFAULTS.outline, ...options.outline },
     mergeBoxes: options.mergeBoxes ?? DEFAULTS.mergeBoxes,
+    mergeOverlap: options.mergeOverlap ?? DEFAULTS.mergeOverlap,
   };
 }
 

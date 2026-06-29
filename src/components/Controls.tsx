@@ -6,6 +6,7 @@ export interface ControlsState {
   burst: boolean;
   outline: boolean;
   mergeBoxes: boolean;
+  mergeOverlap: number;
   pngScale: number;
 }
 
@@ -29,6 +30,7 @@ export default function Controls(props: Props) {
     burst,
     outline,
     mergeBoxes,
+    mergeOverlap,
     pngScale,
     maxChars,
     canExport,
@@ -108,6 +110,19 @@ export default function Controls(props: Props) {
           />
           Merge into one box
         </label>
+        {mergeBoxes && (
+          <label className="field">
+            <span className="field__label">Box overlap: {Math.round(mergeOverlap * 100)}%</span>
+            <input
+              type="range"
+              min={0}
+              max={0.8}
+              step={0.05}
+              value={mergeOverlap}
+              onChange={(e) => onChange('mergeOverlap', Number(e.target.value))}
+            />
+          </label>
+        )}
         <label className="check">
           <input
             type="checkbox"

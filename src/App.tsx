@@ -22,6 +22,7 @@ export default function App() {
     burst: false,
     outline: false,
     mergeBoxes: false,
+    mergeOverlap: 0.2,
     pngScale: 2,
   });
   const [seed, setSeed] = useState(randomSeed);
@@ -67,6 +68,7 @@ export default function App() {
           },
           outline: { enabled: state.outline },
           mergeBoxes: state.mergeBoxes,
+          mergeOverlap: state.mergeOverlap,
         },
         { metrics: metricsRef.current, fontFaceCss: fontRef.current.fontFaceCss },
       );
@@ -84,6 +86,7 @@ export default function App() {
     state.burst,
     state.outline,
     state.mergeBoxes,
+    state.mergeOverlap,
   ]);
 
   const onChange = <K extends keyof ControlsState>(key: K, value: ControlsState[K]) => {

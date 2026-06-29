@@ -12,7 +12,6 @@ const BORDER_SCALE = 1.4; // FIRST glyph outer box
 const BACKGROUND_SCALE = 1.2; // other glyphs' box
 const RED_RANGE = 5; // at most one red letter per window of 5
 const FIRST_BG_SCALE = 0.85; // red inner box on the first glyph
-const MERGE_BOX_OVERLAP = 0.4; // extra black-box width (fraction of box) in merge mode so boxes fuse
 
 interface CharSpec {
   isSpace: boolean;
@@ -152,7 +151,7 @@ export function computeLayout(
     const cy = padding + oh / 2;
     // Merge mode widens only the black box (centered on the glyph) so neighbors
     // overlap and fuse, while letters keep their normal spacing.
-    const extend = opts.mergeBoxes ? gutter + ow * MERGE_BOX_OVERLAP : 0;
+    const extend = opts.mergeBoxes ? gutter + ow * opts.mergeOverlap : 0;
     const boxX = offset - extend / 2;
     const boxW = ow + extend;
     const textX = offset + (ow - s.size.width) / 2 - s.size.left;

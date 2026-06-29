@@ -116,6 +116,13 @@ describe('renderSvg', () => {
     expect(rotatedBlack.length).toBeGreaterThan(1);
   });
 
+  it('mergeOverlap dials the fused box width', () => {
+    const boxWidth = (overlap: number) =>
+      computeLayout('TAKE', resolveOptions({ mergeBoxes: true, mergeOverlap: overlap }), metrics, mulberry32(1))
+        .glyphs[1].rects.find((x) => x.role === 'box')!.width;
+    expect(boxWidth(0.5)).toBeGreaterThan(boxWidth(0.1));
+  });
+
   it('injects the provided font-face CSS into <defs>', () => {
     const css = "@font-face{font-family:'P5Display';src:url(data:font/woff2;base64,AAAA)}";
     const result = generateP5Svg('TAKE YOUR HEART', { seed: 7 }, { metrics, fontFaceCss: css });
