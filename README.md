@@ -1,9 +1,10 @@
 # Persona 5 Text Generator
 
-Type text, get a Persona 5 "calling card" style graphic as **SVG**. Transparent
-background and no outline by default; add a solid color, the concentric red/black
-burst, or the white cut-paper outline as you like. Export to SVG, PNG (1x/2x/4x),
-or copy to clipboard.
+Type text, get a Persona 5 "calling card" style graphic as **SVG**. Black-and-white
+ransom-note lettering: mixed fonts per letter, lowercased vowels, boxed middle
+letters with contour-traced edges that fuse into one shape. Transparent by default;
+add a solid color background or the concentric red/black burst. Export to SVG, PNG
+(1x/2x/4x), or copy to clipboard.
 
 Reimplements the algorithm from [LzxHahaha/persona5](https://github.com/LzxHahaha/persona5)
 (canvas-based) as vector SVG.

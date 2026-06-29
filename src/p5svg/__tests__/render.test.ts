@@ -50,23 +50,17 @@ describe('renderSvg', () => {
     expect(s).toContain('id="bg-burst"');
   });
 
-  it('adds white box edges only when outline is enabled', () => {
-    const off = (svg('ABC').match(/<rect/g) ?? []).length;
-    const on = (svg('ABC', { outline: { enabled: true } }).match(/<rect/g) ?? []).length;
-    expect(on).toBeGreaterThan(off); // extra white edge rect behind each box
-  });
-
-  it('uses only the three brand colors inside the glyph collage', () => {
+  it('uses only black and white inside the glyph collage', () => {
     const s = svg('TAKE YOUR HEART', { background: { fill: '#abcdef', burst: true } });
     const group = glyphGroup(s);
     const fills = [...group.matchAll(/fill="(#[0-9A-Fa-f]{3,6})"/g)].map((m) => m[1]);
     expect(fills.length).toBeGreaterThan(0);
-    const allowed = new Set<string>([Colors.RED, Colors.WHITE, Colors.BLACK]);
+    const allowed = new Set<string>([Colors.WHITE, Colors.BLACK]);
     for (const f of fills) expect(allowed.has(f)).toBe(true);
   });
 
   it('draws all first-glyph layers about one shared pivot', () => {
-    const opts = resolveOptions({ outline: { enabled: true } });
+    const opts = resolveOptions();
     const layout = computeLayout('PERSONA', opts, metrics, mulberry32(3));
     const first = layout.glyphs[0];
     const s = renderSvg(layout, opts, '');

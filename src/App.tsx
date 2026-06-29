@@ -117,7 +117,7 @@ export default function App() {
     <div className="app">
       <header className="app__header">
         <h1>Persona 5 Text Generator</h1>
-        <p>SVG calling-card text. Transparent by default — add a background or outline if you want.</p>
+        <p>SVG calling-card text. Transparent by default — add a solid color or the P5 burst if you want.</p>
       </header>
 
       <main className="app__main">

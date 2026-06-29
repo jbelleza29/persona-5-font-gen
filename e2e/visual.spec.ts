@@ -22,14 +22,12 @@ test('default output is transparent with no background', async ({ page }) => {
   await expect(svg.locator('#bg-burst')).toHaveCount(0);
 });
 
-test('background and outline toggles add their layers', async ({ page }) => {
+test('background toggles add their layers', async ({ page }) => {
   const svg = page.locator('.preview__svg svg');
-  const textsBefore = await svg.locator('#glyphs text').count();
   await page.getByText('P5 burst rings').click();
-  await page.getByText('White cut-paper outline').click();
   await expect(svg.locator('#bg-burst')).toHaveCount(1);
-  // outline adds an extra paper-edge text layer per letter
-  await expect.poll(() => svg.locator('#glyphs text').count()).toBeGreaterThan(textsBefore);
+  await page.getByText('Solid color').click();
+  await expect(svg.locator('#bg-fill')).toHaveCount(1);
 });
 
 test('PNG rasterization: transparent top corner + opaque ink in content', async ({ page }) => {

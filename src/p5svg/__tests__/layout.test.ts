@@ -48,12 +48,13 @@ describe('computeLayout', () => {
     }
   });
 
-  it('first glyph is white with a black outline and the expected pivot', () => {
+  it('first glyph is an uppercase white contour letter at the expected pivot', () => {
     const r = layout('PERSONA', 3);
     const first = r.glyphs[0];
     expect(first.text).not.toBeNull();
+    expect(first.style).toBe('contour');
     expect(first.text!.fill).toBe(Colors.WHITE);
-    expect(first.text!.outlineColor).toBe(Colors.BLACK);
+    expect(first.text!.char).toBe(first.text!.char.toUpperCase());
     // pivot formula: cy = padding + outterHeight/2; cx = padding + outterWidth/2 (first offset == padding)
     expect(first.cy).toBeCloseTo(opts.padding + first.outterHeight / 2, 6);
     expect(first.cx).toBeCloseTo(opts.padding + first.outterWidth / 2, 6);
@@ -72,25 +73,26 @@ describe('computeLayout', () => {
     expect(interior.some((g) => g.rects.some((x) => x.role === 'box'))).toBe(true);
   });
 
-  it('every non-space glyph has a brand outline color', () => {
+  it('every non-space glyph uses a brand fill color', () => {
     const allowed = [Colors.BLACK, Colors.WHITE];
     const r = layout('PERSONA', 3);
     for (const g of r.glyphs) {
       if (g.mode === CharMode.SPACE) continue;
-      expect(allowed).toContain(g.text!.outlineColor);
+      expect(allowed).toContain(g.text!.fill);
     }
   });
 
-  it('inverted glyphs are a black letter with a white outline', () => {
+  it('inverted box letters are a black letter on a white inner panel', () => {
     let inverted = null as ReturnType<typeof layout>['glyphs'][number] | null;
     for (let seed = 0; seed < 80 && !inverted; seed++) {
       inverted =
-        layout('ABCDEFGHIJKLMNOP', seed).glyphs.find((g) => g.mode === CharMode.INVERT) ?? null;
+        layout('ABCDEFGHIJKLMNOP', seed).glyphs.find(
+          (g) => g.mode === CharMode.INVERT && g.style === 'box',
+        ) ?? null;
     }
     expect(inverted).not.toBeNull();
     expect(inverted!.text?.fill).toBe(Colors.BLACK);
-    expect(inverted!.text?.outlineColor).toBe(Colors.WHITE);
-    expect(inverted!.text?.edgeColor).toBe(Colors.BLACK);
+    expect(inverted!.rects.find((x) => x.role === 'inner')?.fill).toBe(Colors.WHITE);
   });
 
   it('mixes upper and lower case, keeping the first letter uppercase', () => {
