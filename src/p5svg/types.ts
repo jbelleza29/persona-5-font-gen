@@ -35,6 +35,8 @@ export interface Options {
   fontFamily?: string;
   /** Font families to swap between per letter (P5 ransom-note look). */
   fonts?: string[];
+  /** Thicker subset used for inverted (black-on-white) letters; defaults to `fonts`. */
+  heavyFonts?: string[];
   background?: Background;
   outline?: Outline;
   /** Widen the black boxes so they overlap into one fused shape behind the letters. */
@@ -50,6 +52,7 @@ export interface ResolvedOptions {
   maxChars: number;
   fontFamily: string;
   fonts: string[];
+  heavyFonts: string[];
   background: Background;
   outline: Required<Outline>;
   mergeBoxes: boolean;
@@ -63,6 +66,7 @@ export const DEFAULTS: ResolvedOptions = {
   maxChars: 30,
   fontFamily: 'P5Display',
   fonts: ['P5Display'],
+  heavyFonts: ['P5Display'],
   background: {},
   outline: { enabled: false, color: Colors.WHITE, radius: 3 },
   mergeBoxes: false,
@@ -78,6 +82,12 @@ export function resolveOptions(options: Options = {}): ResolvedOptions {
     maxChars: options.maxChars ?? DEFAULTS.maxChars,
     fontFamily,
     fonts: options.fonts && options.fonts.length > 0 ? options.fonts : [fontFamily],
+    heavyFonts:
+      options.heavyFonts && options.heavyFonts.length > 0
+        ? options.heavyFonts
+        : options.fonts && options.fonts.length > 0
+          ? options.fonts
+          : [fontFamily],
     background: { ...DEFAULTS.background, ...options.background },
     outline: { ...DEFAULTS.outline, ...options.outline },
     mergeBoxes: options.mergeBoxes ?? DEFAULTS.mergeBoxes,

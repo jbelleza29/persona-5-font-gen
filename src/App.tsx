@@ -63,6 +63,7 @@ export default function App() {
           seed,
           fontSize: state.fontSize,
           fonts: fontSetRef.current.families,
+          heavyFonts: fontSetRef.current.heavyFamilies,
           background: {
             fill: state.fillEnabled ? state.fillColor : undefined,
             burst: state.burst,

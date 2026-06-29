@@ -2,6 +2,8 @@ export interface BundledFont {
   /** SVG/CSS family alias (single word, no spaces). */
   family: string;
   url: string;
+  /** Thick-stroke face — used for inverted (black-on-white) letters so they don't read thin. */
+  heavy?: boolean;
 }
 
 /**
@@ -9,11 +11,11 @@ export interface BundledFont {
  * fonts per letter, so we bundle several and let the layout pick one per glyph.
  */
 export const DEFAULT_FONT_SET: BundledFont[] = [
-  { family: 'P5Anton', url: '/fonts/Anton-Regular.woff2' }, // condensed sans
-  { family: 'P5Archivo', url: '/fonts/ArchivoBlack-Regular.woff2' }, // heavy grotesque
-  { family: 'P5Bevan', url: '/fonts/Bevan-Regular.woff2' }, // slab serif
-  { family: 'P5Tinos', url: '/fonts/Tinos-Bold.woff2' }, // times-style serif
-  { family: 'P5Jost', url: '/fonts/Jost-Bold.woff2' }, // geometric (futura-ish)
+  { family: 'P5Anton', url: '/fonts/Anton-Regular.woff2', heavy: true }, // condensed sans
+  { family: 'P5Archivo', url: '/fonts/ArchivoBlack-Regular.woff2', heavy: true }, // heavy grotesque
+  { family: 'P5Bevan', url: '/fonts/Bevan-Regular.woff2', heavy: true }, // slab serif
+  { family: 'P5Tinos', url: '/fonts/Tinos-Bold.woff2' }, // times-style serif (thinner)
+  { family: 'P5Jost', url: '/fonts/Jost-Bold.woff2' }, // geometric (thinner)
 ];
 
 export interface EmbeddedFontFace {
@@ -26,6 +28,8 @@ export interface EmbeddedFontSet {
   /** @font-face rules for every family, ready to inject into an SVG <defs>. */
   fontFaceCss: string;
   families: string[];
+  /** Subset of families with thick strokes (for inverted letters). */
+  heavyFamilies: string[];
   faces: EmbeddedFontFace[];
 }
 
@@ -52,5 +56,10 @@ export async function loadEmbeddedFonts(set: BundledFont[] = DEFAULT_FONT_SET): 
         `@font-face{font-family:'${f.family}';font-style:normal;src:url(${f.dataUrl}) format('woff2');}`,
     )
     .join('');
-  return { fontFaceCss, families: faces.map((f) => f.family), faces };
+  return {
+    fontFaceCss,
+    families: faces.map((f) => f.family),
+    heavyFamilies: set.filter((f) => f.heavy).map((f) => f.family),
+    faces,
+  };
 }

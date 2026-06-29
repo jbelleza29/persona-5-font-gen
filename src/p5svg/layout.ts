@@ -70,7 +70,9 @@ function buildSpec(
     angle = base * randomOp(rng);
   }
 
-  const fontFamily = opts.fonts[Math.floor(rng() * opts.fonts.length)];
+  // Inverted (black-on-white) letters use the heavy pool so they don't read thin.
+  const pool = mode === CharMode.INVERT && opts.heavyFonts.length > 0 ? opts.heavyFonts : opts.fonts;
+  const fontFamily = pool[Math.floor(rng() * pool.length)];
   const fontSize = opts.fontSize * scale;
   const color =
     mode === CharMode.RED

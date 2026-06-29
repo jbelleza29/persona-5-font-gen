@@ -78,6 +78,26 @@ describe('computeLayout', () => {
     expect(inverted!.rects.find((x) => x.role === 'accent')!.fill).toBe(Colors.WHITE);
   });
 
+  it('inverted glyphs only use the heavy font pool', () => {
+    const heavy = ['H1', 'H2'];
+    const all = ['T1', 'T2', 'T3', ...heavy];
+    let sawInvert = false;
+    for (let seed = 0; seed < 60; seed++) {
+      const r = computeLayout(
+        'ABCDEFGHIJKLMNOP',
+        resolveOptions({ fonts: all, heavyFonts: heavy }),
+        metrics,
+        mulberry32(seed),
+      );
+      for (const g of r.glyphs) {
+        if (g.mode !== CharMode.INVERT) continue;
+        sawInvert = true;
+        expect(heavy).toContain(g.text!.fontFamily);
+      }
+    }
+    expect(sawInvert).toBe(true);
+  });
+
   it('swaps fonts across letters when given a font set', () => {
     const r = computeLayout(
       'TAKEYOURHEART',
