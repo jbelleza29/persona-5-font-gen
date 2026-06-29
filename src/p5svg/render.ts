@@ -1,7 +1,6 @@
 import { Colors, LayoutResult, ResolvedOptions } from './types';
 
-const OUTLINE_FRAC = 0.09; // letter outline thickness as a fraction of font size
-const EDGE_FRAC = 0.06; // extra outer paper-edge thickness
+const OUTLINE_FRAC = 0.09; // letter contour thickness as a fraction of font size
 
 function n(x: number): number {
   return Math.round(x * 100) / 100;
@@ -84,10 +83,9 @@ export function renderSvg(
   }
 
   // Middle letters are boxes; the leading/trailing letters trace the letter contour.
-  // Drawn in z-ordered passes: edge -> black -> inner panel -> letter fill.
+  // Drawn in z-ordered passes: black -> white inner panel -> letter fill. No white edge.
   const letters = glyphs.filter((g) => g.text);
   const mergeBoost = opts.mergeBoxes ? opts.mergeOverlap : 0;
-  const edgeColor = safeColor(opts.outline.color, Colors.WHITE)!;
 
   const textLayer = (g: (typeof glyphs)[number], color: string, strokeW: number): string => {
     const t = g.text!;
@@ -102,35 +100,27 @@ export function renderSvg(
     )} ${n(g.cx)} ${n(g.cy)})">${esc(t.char)}</text>`;
   };
 
-  const rectEl = (g: (typeof glyphs)[number], r: (typeof g.rects)[number], fill: string, grow = 0) =>
-    `<rect x="${n(r.x - grow)}" y="${n(r.y - grow)}" width="${n(r.width + 2 * grow)}" height="${n(
-      r.height + 2 * grow,
+  const rectEl = (g: (typeof glyphs)[number], r: (typeof g.rects)[number], fill: string) =>
+    `<rect x="${n(r.x)}" y="${n(r.y)}" width="${n(r.width)}" height="${n(
+      r.height,
     )}" fill="${fill}" transform="rotate(${n(r.angle)} ${n(g.cx)} ${n(g.cy)})"/>`;
 
   const contourW = (g: (typeof glyphs)[number]) => g.text!.fontSize * (OUTLINE_FRAC + mergeBoost);
 
   parts.push('<g id="glyphs">');
-  // pass 1: white paper edge — boxes only (contour letters get no outer outline)
-  if (opts.outline.enabled) {
-    for (const g of letters) {
-      for (const r of g.rects) {
-        if (r.role === 'box') parts.push(rectEl(g, r, edgeColor, g.text!.fontSize * EDGE_FRAC));
-      }
-    }
-  }
-  // pass 2: black boxes + connector bits, then the contour stroke
+  // pass 1: black boxes + connector bits, then the black contour stroke
   for (const g of letters) {
     for (const r of g.rects) if (r.role === 'box') parts.push(rectEl(g, r, r.fill));
     if (g.style === 'contour') {
-      parts.push(textLayer(g, safeColor(g.text!.outlineColor, Colors.BLACK)!, 2 * contourW(g)));
+      parts.push(textLayer(g, Colors.BLACK, 2 * contourW(g)));
     }
   }
-  // pass 3: white inner panels (inverted box letters)
+  // pass 2: white inner panels (inverted box letters)
   for (const g of letters) {
     if (g.style !== 'box') continue;
     for (const r of g.rects) if (r.role === 'inner') parts.push(rectEl(g, r, r.fill));
   }
-  // pass 4: the letters
+  // pass 3: the letters
   for (const g of letters) {
     parts.push(textLayer(g, safeColor(g.text!.fill, Colors.WHITE)!, 0));
   }

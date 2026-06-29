@@ -15,6 +15,7 @@ const RED_RANGE = 5; // at most one red letter per window of 5
 const THIN_PROB = 0.33; // chance a letter is "thin" when allowed (baseline leans thick)
 const LOWER_PROB = 0.4; // chance a (non-first) letter renders lowercase
 const INNER_SCALE = 0.85; // white inner panel size for inverted box letters
+const TRACK = 0.84; // advance per letter as a fraction of its slot (lower = more crowded)
 
 interface CharSpec {
   isSpace: boolean;
@@ -220,10 +221,8 @@ export function computeLayout(
     // baseline y so the ink box is centered vertically in the canvas
     const textY = height / 2 + (s.size.ascent - s.size.descent) / 2;
     const style: 'box' | 'contour' = i === firstIdx || i === lastIdx ? 'contour' : 'box';
-
-    // Contour colors: black traces the letter; inverted traces in white. No red.
-    const outlineColor = s.mode === CharMode.INVERT ? Colors.WHITE : Colors.BLACK;
-    const edgeColor = s.mode === CharMode.INVERT ? Colors.BLACK : Colors.WHITE;
+    // Contour (edge) letters are always white with a black contour; never inverted.
+    const fill = style === 'contour' ? Colors.WHITE : s.color;
 
     const rects: RectLayer[] = [];
     let rightEdge = offset + ow;
@@ -255,35 +254,6 @@ export function computeLayout(
         });
       }
       rightEdge = boxX + boxW;
-    } else {
-      // Contour edge letter: cheat a partial box on the side that has a neighbor so
-      // it fuses into the row instead of floating with an awkward gap.
-      const bridge = gutter + ow * opts.mergeOverlap + 4;
-      const leadingNeighbor = i === firstIdx && i + 1 <= lastIdx && !specs[i + 1].isSpace;
-      const trailingNeighbor = i === lastIdx && i - 1 >= firstIdx && !specs[i - 1].isSpace;
-      if (leadingNeighbor) {
-        const start = offset + ow * 0.4;
-        rects.push({
-          x: start,
-          y: (height - oh) / 2,
-          width: offset + ow + bridge - start,
-          height: oh,
-          fill: Colors.BLACK,
-          angle: s.angle + 1,
-          role: 'box',
-        });
-      } else if (trailingNeighbor) {
-        const start = offset - bridge;
-        rects.push({
-          x: start,
-          y: (height - oh) / 2,
-          width: offset + ow * 0.6 - start,
-          height: oh,
-          fill: Colors.BLACK,
-          angle: s.angle + 1,
-          role: 'box',
-        });
-      }
     }
 
     glyphs.push({
@@ -302,16 +272,14 @@ export function computeLayout(
         y: textY,
         fontSize: s.fontSize,
         fontFamily: s.fontFamily,
-        fill: s.color,
-        outlineColor,
-        edgeColor,
+        fill,
         angle: s.angle,
         char: s.char,
       },
     });
 
     maxRight = Math.max(maxRight, rightEdge);
-    offset += ow + gutter;
+    offset += ow * TRACK; // crowd letters so boxes/contours overlap and merge
   }
 
   const width = maxRight + padding;

@@ -17,7 +17,6 @@ export default function App() {
     fillEnabled: false,
     fillColor: '#e5191c',
     burst: false,
-    outline: false,
     mergeBoxes: true,
     mergeOverlap: 0.05,
     pngScale: 2,
@@ -68,7 +67,6 @@ export default function App() {
             fill: state.fillEnabled ? state.fillColor : undefined,
             burst: state.burst,
           },
-          outline: { enabled: state.outline },
           mergeBoxes: state.mergeBoxes,
           mergeOverlap: state.mergeOverlap,
         },
@@ -86,7 +84,6 @@ export default function App() {
     state.fillEnabled,
     state.fillColor,
     state.burst,
-    state.outline,
     state.mergeBoxes,
     state.mergeOverlap,
   ]);

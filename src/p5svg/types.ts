@@ -19,12 +19,6 @@ export interface Background {
   burst?: boolean;
 }
 
-export interface Outline {
-  enabled: boolean;
-  color?: string;
-  radius?: number;
-}
-
 export interface Options {
   fontSize?: number;
   gutter?: number;
@@ -37,7 +31,6 @@ export interface Options {
   /** Thicker subset used for inverted (black-on-white) letters; defaults to `fonts`. */
   heavyFonts?: string[];
   background?: Background;
-  outline?: Outline;
   /** Widen the black boxes so they overlap into one fused shape behind the letters. */
   mergeBoxes?: boolean;
   /** Extra black-box width as a fraction of the box, in merge mode (more = more fusion). */
@@ -53,7 +46,6 @@ export interface ResolvedOptions {
   fonts: string[];
   heavyFonts: string[];
   background: Background;
-  outline: Required<Outline>;
   mergeBoxes: boolean;
   mergeOverlap: number;
 }
@@ -67,7 +59,6 @@ export const DEFAULTS: ResolvedOptions = {
   fonts: ['P5Display'],
   heavyFonts: ['P5Display'],
   background: {},
-  outline: { enabled: false, color: Colors.WHITE, radius: 3 },
   mergeBoxes: true,
   mergeOverlap: 0.05,
 };
@@ -88,7 +79,6 @@ export function resolveOptions(options: Options = {}): ResolvedOptions {
           ? options.fonts
           : [fontFamily],
     background: { ...DEFAULTS.background, ...options.background },
-    outline: { ...DEFAULTS.outline, ...options.outline },
     mergeBoxes: options.mergeBoxes ?? DEFAULTS.mergeBoxes,
     mergeOverlap: options.mergeOverlap ?? DEFAULTS.mergeOverlap,
   };
@@ -113,10 +103,6 @@ export interface TextLayer {
   fontFamily: string;
   /** Letter fill color. */
   fill: string;
-  /** Contour color tracing the letter (contour style only). */
-  outlineColor: string;
-  /** Outer paper edge color (drawn when outline is enabled). */
-  edgeColor: string;
   angle: number;
   char: string;
 }

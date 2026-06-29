@@ -4,7 +4,6 @@ export interface ControlsState {
   fillEnabled: boolean;
   fillColor: string;
   burst: boolean;
-  outline: boolean;
   mergeBoxes: boolean;
   mergeOverlap: number;
   pngScale: number;
@@ -28,7 +27,6 @@ export default function Controls(props: Props) {
     fillEnabled,
     fillColor,
     burst,
-    outline,
     mergeBoxes,
     mergeOverlap,
     pngScale,
@@ -123,14 +121,6 @@ export default function Controls(props: Props) {
             />
           </label>
         )}
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={outline}
-            onChange={(e) => onChange('outline', e.target.checked)}
-          />
-          White cut-paper outline
-        </label>
       </fieldset>
 
       <button className="btn btn--primary" onClick={props.onReroll}>
