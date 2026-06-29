@@ -78,6 +78,38 @@ describe('computeLayout', () => {
     expect(inverted!.rects.find((x) => x.role === 'accent')!.fill).toBe(Colors.WHITE);
   });
 
+  it('mixes upper and lower case, keeping the first letter uppercase', () => {
+    let sawLower = false;
+    let sawUpper = false;
+    for (let seed = 0; seed < 40; seed++) {
+      const letters = layout('PERSONAFIVE', seed).glyphs.filter((g) => g.text);
+      const first = letters[0].text!.char;
+      expect(first).toBe(first.toUpperCase());
+      for (const g of letters) {
+        const c = g.text!.char;
+        if (c !== c.toUpperCase()) sawLower = true;
+        if (c !== c.toLowerCase()) sawUpper = true;
+      }
+    }
+    expect(sawLower).toBe(true);
+    expect(sawUpper).toBe(true);
+  });
+
+  it('does not repeat the same font on adjacent letters', () => {
+    const fonts = ['A', 'B', 'C', 'D', 'E'];
+    for (let seed = 0; seed < 60; seed++) {
+      const letters = computeLayout(
+        'ABCDEFGHIJKLMNOP',
+        resolveOptions({ fonts, heavyFonts: fonts }),
+        metrics,
+        mulberry32(seed),
+      ).glyphs.filter((g) => g.mode !== CharMode.SPACE);
+      for (let i = 1; i < letters.length; i++) {
+        expect(letters[i].text!.fontFamily).not.toBe(letters[i - 1].text!.fontFamily);
+      }
+    }
+  });
+
   it('never places two thin letters consecutively', () => {
     const heavy = ['H1', 'H2'];
     const all = ['T1', 'T2', ...heavy];

@@ -13,6 +13,7 @@ const BACKGROUND_SCALE = 1.2; // other glyphs' box
 const RED_RANGE = 5; // at most one red letter per window of 5
 const FIRST_BG_SCALE = 0.85; // red inner box on the first glyph
 const THIN_PROB = 0.33; // chance a letter is "thin" when allowed (baseline leans thick)
+const LOWER_PROB = 0.4; // chance a (non-first) letter renders lowercase
 
 interface CharSpec {
   isSpace: boolean;
@@ -75,13 +76,28 @@ function pickThickness(chars: string[], modes: CharMode[], rng: Rng): boolean[] 
   return thin;
 }
 
+/** Pick a font per letter from the matching thickness pool, avoiding an immediate repeat. */
+function pickFonts(chars: string[], thin: boolean[], thickFonts: string[], thinFonts: string[], rng: Rng): string[] {
+  const fonts = chars.map(() => '');
+  let prev = '';
+  for (let i = 0; i < chars.length; i++) {
+    if (/^\s$/.test(chars[i])) continue;
+    const pool = thin[i] ? thinFonts : thickFonts;
+    const choices = pool.length > 1 ? pool.filter((f) => f !== prev) : pool;
+    const fam = choices[Math.floor(rng() * choices.length)] ?? pool[0];
+    fonts[i] = fam;
+    prev = fam;
+  }
+  return fonts;
+}
+
 function buildSpec(
   char: string,
   mode: CharMode,
   opts: ResolvedOptions,
   metrics: GlyphMetricsProvider,
   rng: Rng,
-  pool: string[],
+  fontFamily: string,
 ): CharSpec {
   // rng call order mirrors the reference BoxChar constructor.
   const base = -(Math.round(rng() * 10) % 10);
@@ -95,7 +111,9 @@ function buildSpec(
     angle = base * randomOp(rng);
   }
 
-  const fontFamily = pool[Math.floor(rng() * pool.length)];
+  // mixed case: the first letter stays uppercase, others are randomly lowercased
+  const display = mode !== CharMode.FIRST && rng() < LOWER_PROB ? char.toLowerCase() : char;
+
   const fontSize = opts.fontSize * scale;
   const color =
     mode === CharMode.RED
@@ -103,13 +121,13 @@ function buildSpec(
       : mode === CharMode.INVERT
         ? Colors.BLACK
         : Colors.WHITE;
-  const size = metrics.measure(char, fontSize, fontFamily, 'normal');
+  const size = metrics.measure(display, fontSize, fontFamily, 'normal');
   const rot = rotatedBox(size.width, size.height, angle);
   const outter = mode === CharMode.FIRST ? BORDER_SCALE : BACKGROUND_SCALE;
 
   return {
     isSpace: false,
-    char,
+    char: display,
     mode,
     angle,
     scale,
@@ -136,6 +154,7 @@ export function computeLayout(
   const thickFonts = opts.heavyFonts.length > 0 ? opts.heavyFonts : opts.fonts;
   const thinCandidates = opts.fonts.filter((f) => !opts.heavyFonts.includes(f));
   const thinFonts = thinCandidates.length > 0 ? thinCandidates : opts.fonts;
+  const fontByIndex = pickFonts(chars, thin, thickFonts, thinFonts, rng);
 
   const specs: CharSpec[] = chars.map((char, i) => {
     if (/^\s$/.test(char)) {
@@ -153,7 +172,7 @@ export function computeLayout(
         outterHeight: 0,
       };
     }
-    return buildSpec(char, modes[i], opts, metrics, rng, thin[i] ? thinFonts : thickFonts);
+    return buildSpec(char, modes[i], opts, metrics, rng, fontByIndex[i]);
   });
 
   const { gutter, padding } = opts;
