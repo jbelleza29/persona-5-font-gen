@@ -12,48 +12,61 @@ export interface GlyphMetricsProvider {
 }
 
 /**
- * Canvas-backed metrics using TextMetrics.actualBoundingBox*. Falls back to a
- * rough estimate when those fields are unavailable (older browsers).
+ * Canvas-backed metrics. Renders the glyph with textBaseline 'top' and scans the
+ * pixels for the ink bounding box (same approach as the reference). top/left are
+ * the ink offsets from the em-box top-left, which pairs with the SVG renderer's
+ * dominant-baseline="text-before-edge".
  */
 export class CanvasMetricsProvider implements GlyphMetricsProvider {
   private ctx: CanvasRenderingContext2D;
 
   constructor(canvas?: HTMLCanvasElement) {
     const c = canvas ?? document.createElement('canvas');
-    const ctx = c.getContext('2d');
+    const ctx = c.getContext('2d', { willReadFrequently: true });
     if (!ctx) throw new Error('2D canvas context unavailable');
     this.ctx = ctx;
   }
 
   measure(char: string, fontPx: number, fontFamily: string, weight: string): GlyphSize {
     const ctx = this.ctx;
+    const pad = Math.ceil(fontPx * 0.5);
+    const w = Math.ceil(fontPx * 2) + pad;
+    const h = Math.ceil(fontPx * 2) + pad;
+    ctx.canvas.width = w;
+    ctx.canvas.height = h;
+    ctx.clearRect(0, 0, w, h);
     ctx.font = `${weight} ${fontPx}px ${fontFamily}`;
     ctx.textBaseline = 'top';
-    const m = ctx.measureText(char);
+    ctx.fillStyle = '#000';
+    ctx.fillText(char, 0, 0);
 
-    const hasBox =
-      typeof m.actualBoundingBoxLeft === 'number' &&
-      typeof m.actualBoundingBoxAscent === 'number';
-
-    if (hasBox) {
-      const left = m.actualBoundingBoxLeft;
-      const right = m.actualBoundingBoxRight;
-      const top = m.actualBoundingBoxAscent;
-      const bottom = m.actualBoundingBoxDescent;
-      return {
-        width: Math.max(1, left + right),
-        height: Math.max(1, top + bottom),
-        top,
-        left,
-      };
+    const data = ctx.getImageData(0, 0, w, h).data;
+    let minX = w;
+    let minY = h;
+    let maxX = -1;
+    let maxY = -1;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (data[(y * w + x) * 4 + 3] !== 0) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
     }
 
-    // Fallback: width from advance, height from font size.
+    if (maxX < 0) {
+      // No ink (e.g. unsupported glyph) — fall back to advance width.
+      const adv = ctx.measureText(char).width || fontPx * 0.4;
+      return { width: Math.max(1, adv), height: fontPx, top: 0, left: 0 };
+    }
+
     return {
-      width: Math.max(1, m.width),
-      height: fontPx,
-      top: 0,
-      left: 0,
+      width: maxX - minX + 1,
+      height: maxY - minY + 1,
+      top: minY,
+      left: minX,
     };
   }
 }
