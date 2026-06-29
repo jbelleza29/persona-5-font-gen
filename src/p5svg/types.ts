@@ -112,6 +112,4 @@ export interface LayoutResult {
   width: number;
   height: number;
   glyphs: PlacedGlyph[];
-  /** Single black bar drawn instead of per-glyph boxes when mergeBoxes is on. */
-  mergedBar: RectLayer | null;
 }

@@ -92,36 +92,27 @@ export function renderSvg(
     parts.push(renderBurst(w, h));
   }
 
+  const rect = (g: (typeof glyphs)[number], r: (typeof g.rects)[number]) =>
+    `<rect x="${n(r.x)}" y="${n(r.y)}" width="${n(r.width)}" height="${n(
+      r.height,
+    )}" fill="${r.fill}" transform="rotate(${n(r.angle)} ${n(g.cx)} ${n(g.cy)})"/>`;
+
   const filterAttr = opts.outline.enabled ? ' filter="url(#paperEdge)"' : '';
   parts.push(`<g id="glyphs"${filterAttr}>`);
-  const merged = layout.mergedBar;
-  if (merged) {
-    parts.push(
-      `<rect id="merged-box" x="${n(merged.x)}" y="${n(merged.y)}" width="${n(
-        merged.width,
-      )}" height="${n(merged.height)}" fill="${merged.fill}"/>`,
-    );
-  }
+  // Three z-ordered passes so overlapping (merged) boxes stack cleanly:
+  // black boxes first (fuse into one mass), then red accents, then letters.
+  for (const g of glyphs) for (const r of g.rects) if (r.role === 'box') parts.push(rect(g, r));
+  for (const g of glyphs) for (const r of g.rects) if (r.role === 'accent') parts.push(rect(g, r));
   for (const g of glyphs) {
-    const pivot = `${n(g.cx)} ${n(g.cy)}`;
-    for (const r of g.rects) {
-      if (merged && r.role === 'box') continue; // replaced by the single merged box
-      parts.push(
-        `<rect x="${n(r.x)}" y="${n(r.y)}" width="${n(r.width)}" height="${n(
-          r.height,
-        )}" fill="${r.fill}" transform="rotate(${n(r.angle)} ${pivot})"/>`,
-      );
-    }
-    if (g.text) {
-      const t = g.text;
-      parts.push(
-        `<text x="${n(t.x)}" y="${n(t.y)}" font-family="${opts.fontFamily}" font-weight="700" font-size="${n(
-          t.fontSize,
-        )}" fill="${t.fill}" dominant-baseline="alphabetic" text-anchor="start" transform="rotate(${n(
-          t.angle,
-        )} ${pivot})">${esc(t.char)}</text>`,
-      );
-    }
+    if (!g.text) continue;
+    const t = g.text;
+    parts.push(
+      `<text x="${n(t.x)}" y="${n(t.y)}" font-family="${opts.fontFamily}" font-weight="700" font-size="${n(
+        t.fontSize,
+      )}" fill="${t.fill}" dominant-baseline="alphabetic" text-anchor="start" transform="rotate(${n(
+        t.angle,
+      )} ${n(g.cx)} ${n(g.cy)})">${esc(t.char)}</text>`,
+    );
   }
   parts.push('</g>');
   parts.push('</svg>');

@@ -3,7 +3,6 @@ import {
   Colors,
   LayoutResult,
   PlacedGlyph,
-  RectLayer,
   ResolvedOptions,
 } from './types';
 import { GlyphMetricsProvider, GlyphSize } from './metrics';
@@ -13,6 +12,7 @@ const BORDER_SCALE = 1.4; // FIRST glyph outer box
 const BACKGROUND_SCALE = 1.2; // other glyphs' box
 const RED_RANGE = 5; // at most one red letter per window of 5
 const FIRST_BG_SCALE = 0.85; // red inner box on the first glyph
+const MERGE_ADVANCE = 0.7; // box advance fraction in merge mode (overlap so boxes fuse)
 
 interface CharSpec {
   isSpace: boolean;
@@ -118,20 +118,15 @@ export function computeLayout(
   });
 
   const { gutter, padding } = opts;
-  let width = padding * 2;
   let contentHeight = 0;
   for (const s of specs) {
-    if (s.isSpace) {
-      width += 2 * gutter;
-    } else {
-      width += s.outterWidth + gutter;
-      contentHeight = Math.max(contentHeight, s.outterHeight);
-    }
+    if (!s.isSpace) contentHeight = Math.max(contentHeight, s.outterHeight);
   }
   const height = contentHeight + padding * 2;
 
   const glyphs: PlacedGlyph[] = [];
   let offset = padding;
+  let maxRight = padding;
   for (const s of specs) {
     if (s.isSpace) {
       glyphs.push({
@@ -147,6 +142,7 @@ export function computeLayout(
         text: null,
       });
       offset += 2 * gutter;
+      maxRight = Math.max(maxRight, offset);
       continue;
     }
 
@@ -212,23 +208,11 @@ export function computeLayout(
     }
 
     glyphs.push(glyph);
-    offset += ow + gutter;
+    maxRight = Math.max(maxRight, offset + ow);
+    // Merge mode overlaps boxes so they fuse into one connected shape.
+    offset += opts.mergeBoxes ? ow * MERGE_ADVANCE : ow + gutter;
   }
 
-  // Merge mode: one continuous black bar behind all glyphs instead of per-letter
-  // boxes. The renderer skips role:'box' rects and draws this single shape, so the
-  // outline wraps one box.
-  const mergedBar: RectLayer | null = opts.mergeBoxes
-    ? {
-        x: padding,
-        y: padding,
-        width: Math.max(0, width - padding * 2),
-        height: Math.max(0, height - padding * 2),
-        fill: Colors.BLACK,
-        angle: 0,
-        role: 'box',
-      }
-    : null;
-
-  return { width, height, glyphs, mergedBar };
+  const width = maxRight + padding;
+  return { width, height, glyphs };
 }

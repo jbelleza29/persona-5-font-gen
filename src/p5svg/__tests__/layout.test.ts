@@ -71,17 +71,12 @@ describe('computeLayout', () => {
     expect(r.glyphs).toHaveLength(4);
   });
 
-  it('computes width with spaces contributing 2*gutter', () => {
+  it('width bounds the rightmost box plus padding', () => {
     const r = layout('TAKE YOUR HEART', 5);
-    const expected =
-      opts.padding * 2 +
-      r.glyphs.reduce(
-        (acc, g) =>
-          acc + (g.mode === CharMode.SPACE ? 2 * opts.gutter : g.outterWidth + opts.gutter),
-        0,
-      );
-    expect(r.width).toBeCloseTo(expected, 6);
-    // and the string actually contains space glyphs
+    const maxRight = Math.max(
+      ...r.glyphs.filter((g) => g.mode !== CharMode.SPACE).map((g) => g.cx + g.outterWidth / 2),
+    );
+    expect(r.width).toBeCloseTo(maxRight + opts.padding, 6);
     expect(r.glyphs.some((g) => g.mode === CharMode.SPACE)).toBe(true);
   });
 });

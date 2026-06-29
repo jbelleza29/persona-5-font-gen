@@ -94,20 +94,17 @@ describe('renderSvg', () => {
     expect(svg('ABC', { background: { fill: 'rgb(10, 20, 30)' } })).toContain('id="bg-fill"');
   });
 
-  it('merge mode draws one black bar and no rotated black boxes', () => {
-    const normal = svg('TAKE');
-    expect(normal).not.toContain('id="merged-box"');
-    const rotatedBlackNormal = [...normal.matchAll(/<rect[^>]*fill="#0F0F0F"[^>]*>/g)].filter((m) =>
-      m[0].includes('rotate'),
-    );
-    expect(rotatedBlackNormal.length).toBeGreaterThan(0);
+  it('merge mode overlaps per-letter boxes into a tighter layout', () => {
+    const w1 = computeLayout('TAKE', resolveOptions({}), metrics, mulberry32(1)).width;
+    const w2 = computeLayout('TAKE', resolveOptions({ mergeBoxes: true }), metrics, mulberry32(1)).width;
+    expect(w2).toBeLessThan(w1); // boxes overlap -> narrower
 
+    // boxes stay per-letter (rotated), not collapsed into a single shape
     const merged = svg('TAKE', { mergeBoxes: true });
-    expect(merged).toContain('id="merged-box"');
-    const rotatedBlackMerged = [...merged.matchAll(/<rect[^>]*fill="#0F0F0F"[^>]*>/g)].filter((m) =>
+    const rotatedBlack = [...merged.matchAll(/<rect[^>]*fill="#0F0F0F"[^>]*>/g)].filter((m) =>
       m[0].includes('rotate'),
     );
-    expect(rotatedBlackMerged.length).toBe(0); // black boxes replaced by the one bar
+    expect(rotatedBlack.length).toBeGreaterThan(1);
   });
 
   it('injects the provided font-face CSS into <defs>', () => {
