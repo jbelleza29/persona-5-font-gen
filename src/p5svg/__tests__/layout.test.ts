@@ -78,6 +78,25 @@ describe('computeLayout', () => {
     expect(inverted!.rects.find((x) => x.role === 'accent')!.fill).toBe(Colors.WHITE);
   });
 
+  it('never places two thin letters consecutively', () => {
+    const heavy = ['H1', 'H2'];
+    const all = ['T1', 'T2', ...heavy];
+    for (let seed = 0; seed < 80; seed++) {
+      const r = computeLayout(
+        'ABCDEFGHIJKLMNOP',
+        resolveOptions({ fonts: all, heavyFonts: heavy }),
+        metrics,
+        mulberry32(seed),
+      );
+      const letters = r.glyphs.filter((g) => g.mode !== CharMode.SPACE);
+      for (let i = 1; i < letters.length; i++) {
+        const prevThin = !heavy.includes(letters[i - 1].text!.fontFamily);
+        const curThin = !heavy.includes(letters[i].text!.fontFamily);
+        expect(prevThin && curThin).toBe(false);
+      }
+    }
+  });
+
   it('inverted glyphs only use the heavy font pool', () => {
     const heavy = ['H1', 'H2'];
     const all = ['T1', 'T2', 'T3', ...heavy];

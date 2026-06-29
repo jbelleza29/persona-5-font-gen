@@ -12,6 +12,7 @@ const BORDER_SCALE = 1.4; // FIRST glyph outer box
 const BACKGROUND_SCALE = 1.2; // other glyphs' box
 const RED_RANGE = 5; // at most one red letter per window of 5
 const FIRST_BG_SCALE = 0.85; // red inner box on the first glyph
+const THIN_PROB = 0.33; // chance a letter is "thin" when allowed (baseline leans thick)
 
 interface CharSpec {
   isSpace: boolean;
@@ -51,12 +52,36 @@ function pickAccentModes(chars: string[], rng: Rng): CharMode[] {
   return modes;
 }
 
+/**
+ * Decide a thickness tier (thin/thick) per letter. Thick-biased baseline, and
+ * a thin letter is never followed by another thin one (thick -> thin -> thick).
+ * FIRST and INVERT letters are always thick. Spaces are skipped (don't break the run).
+ */
+function pickThickness(chars: string[], modes: CharMode[], rng: Rng): boolean[] {
+  const thin = chars.map(() => false);
+  let prevThin = false;
+  for (let i = 0; i < chars.length; i++) {
+    if (/^\s$/.test(chars[i])) continue;
+    const mode = modes[i];
+    let isThin: boolean;
+    if (mode === CharMode.FIRST || mode === CharMode.INVERT || prevThin) {
+      isThin = false;
+    } else {
+      isThin = rng() < THIN_PROB;
+    }
+    thin[i] = isThin;
+    prevThin = isThin;
+  }
+  return thin;
+}
+
 function buildSpec(
   char: string,
   mode: CharMode,
   opts: ResolvedOptions,
   metrics: GlyphMetricsProvider,
   rng: Rng,
+  pool: string[],
 ): CharSpec {
   // rng call order mirrors the reference BoxChar constructor.
   const base = -(Math.round(rng() * 10) % 10);
@@ -70,8 +95,6 @@ function buildSpec(
     angle = base * randomOp(rng);
   }
 
-  // Inverted (black-on-white) letters use the heavy pool so they don't read thin.
-  const pool = mode === CharMode.INVERT && opts.heavyFonts.length > 0 ? opts.heavyFonts : opts.fonts;
   const fontFamily = pool[Math.floor(rng() * pool.length)];
   const fontSize = opts.fontSize * scale;
   const color =
@@ -107,6 +130,12 @@ export function computeLayout(
 ): LayoutResult {
   const chars = Array.from(text.trim().toUpperCase()).slice(0, opts.maxChars);
   const modes = pickAccentModes(chars, rng);
+  const thin = pickThickness(chars, modes, rng);
+
+  // thick pool = heavy faces; thin pool = the rest (fall back to all if a side is empty)
+  const thickFonts = opts.heavyFonts.length > 0 ? opts.heavyFonts : opts.fonts;
+  const thinCandidates = opts.fonts.filter((f) => !opts.heavyFonts.includes(f));
+  const thinFonts = thinCandidates.length > 0 ? thinCandidates : opts.fonts;
 
   const specs: CharSpec[] = chars.map((char, i) => {
     if (/^\s$/.test(char)) {
@@ -124,7 +153,7 @@ export function computeLayout(
         outterHeight: 0,
       };
     }
-    return buildSpec(char, modes[i], opts, metrics, rng);
+    return buildSpec(char, modes[i], opts, metrics, rng, thin[i] ? thinFonts : thickFonts);
   });
 
   const { gutter, padding } = opts;

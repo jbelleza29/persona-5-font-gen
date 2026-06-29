@@ -12,7 +12,7 @@ function randomSeed(): number {
 
 export default function App() {
   const [state, setState] = useState<ControlsState>({
-    text: 'TAKE YOUR HEART',
+    text: 'PERSONA',
     fontSize: 64,
     fillEnabled: false,
     fillColor: '#e5191c',
