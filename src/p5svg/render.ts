@@ -97,11 +97,13 @@ export function renderSvg(
       r.height,
     )}" fill="${r.fill}" transform="rotate(${n(r.angle)} ${n(g.cx)} ${n(g.cy)})"/>`;
 
-  const filterAttr = opts.outline.enabled ? ' filter="url(#paperEdge)"' : '';
-  parts.push(`<g id="glyphs"${filterAttr}>`);
-  // Three z-ordered passes so overlapping (merged) boxes stack cleanly:
-  // black boxes first (fuse into one mass), then red accents, then letters.
+  const boxFilter = opts.outline.enabled ? ' filter="url(#paperEdge)"' : '';
+  parts.push('<g id="glyphs">');
+  // Outline applies to the BOXES only, so the white edge traces the box outline,
+  // not the letter seams. Boxes first (fuse when merged), then accents, then letters.
+  parts.push(`<g id="boxes"${boxFilter}>`);
   for (const g of glyphs) for (const r of g.rects) if (r.role === 'box') parts.push(rect(g, r));
+  parts.push('</g>');
   for (const g of glyphs) for (const r of g.rects) if (r.role === 'accent') parts.push(rect(g, r));
   for (const g of glyphs) {
     if (!g.text) continue;
