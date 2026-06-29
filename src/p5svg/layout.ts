@@ -13,7 +13,8 @@ const BORDER_SCALE = 1.4; // FIRST glyph outer box
 const BACKGROUND_SCALE = 1.2; // other glyphs' slot
 const RED_RANGE = 5; // at most one red letter per window of 5
 const THIN_PROB = 0.33; // chance a letter is "thin" when allowed (baseline leans thick)
-const LOWER_PROB = 0.4; // chance a (non-first) letter renders lowercase
+const VOWELS = /[AEIOU]/; // P5 drops middle vowels to lowercase
+const CONSONANT_LOWER_PROB = 0.15; // occasional lowercase consonant for ransom variation
 const INNER_SCALE = 0.85; // white inner panel size for inverted box letters
 const TRACK = 0.84; // advance per letter as a fraction of its slot (lower = more crowded)
 
@@ -100,6 +101,7 @@ function buildSpec(
   metrics: GlyphMetricsProvider,
   rng: Rng,
   fontFamily: string,
+  isEdge: boolean,
 ): CharSpec {
   // rng call order mirrors the reference BoxChar constructor.
   const base = -(Math.round(rng() * 10) % 10);
@@ -113,8 +115,17 @@ function buildSpec(
     angle = base * randomOp(rng);
   }
 
-  // mixed case: the first letter stays uppercase, others are randomly lowercased
-  const display = mode !== CharMode.FIRST && rng() < LOWER_PROB ? char.toLowerCase() : char;
+  // P5 case rule: edges stay uppercase; middle vowels drop to lowercase; consonants
+  // stay uppercase apart from the occasional ransom-note exception.
+  let lower: boolean;
+  if (isEdge) {
+    lower = false;
+  } else if (VOWELS.test(char)) {
+    lower = true;
+  } else {
+    lower = rng() < CONSONANT_LOWER_PROB;
+  }
+  const display = lower ? char.toLowerCase() : char;
 
   const fontSize = opts.fontSize * scale;
   const color = mode === CharMode.INVERT ? Colors.BLACK : Colors.WHITE;
@@ -153,6 +164,16 @@ export function computeLayout(
   const thinFonts = thinCandidates.length > 0 ? thinCandidates : opts.fonts;
   const fontByIndex = pickFonts(chars, thin, thickFonts, thinFonts, rng);
 
+  // Leading and trailing letters are the edges (contour style + always uppercase).
+  let firstIdx = -1;
+  let lastIdx = -1;
+  for (let i = 0; i < chars.length; i++) {
+    if (!/^\s$/.test(chars[i])) {
+      if (firstIdx < 0) firstIdx = i;
+      lastIdx = i;
+    }
+  }
+
   const specs: CharSpec[] = chars.map((char, i) => {
     if (/^\s$/.test(char)) {
       return {
@@ -169,7 +190,7 @@ export function computeLayout(
         outterHeight: 0,
       };
     }
-    return buildSpec(char, modes[i], opts, metrics, rng, fontByIndex[i]);
+    return buildSpec(char, modes[i], opts, metrics, rng, fontByIndex[i], i === firstIdx || i === lastIdx);
   });
 
   const { gutter, padding } = opts;
@@ -178,16 +199,6 @@ export function computeLayout(
     if (!s.isSpace) contentHeight = Math.max(contentHeight, s.outterHeight);
   }
   const height = contentHeight + padding * 2;
-
-  // Leading and trailing letters use the contour style; everything else is boxey.
-  let firstIdx = -1;
-  let lastIdx = -1;
-  for (let i = 0; i < specs.length; i++) {
-    if (!specs[i].isSpace) {
-      if (firstIdx < 0) firstIdx = i;
-      lastIdx = i;
-    }
-  }
 
   const glyphs: PlacedGlyph[] = [];
   let offset = padding;
