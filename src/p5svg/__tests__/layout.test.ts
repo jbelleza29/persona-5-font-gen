@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { computeLayout } from '../layout';
 import { StubMetricsProvider } from '../metrics';
 import { mulberry32 } from '../rng';
-import { CharMode, resolveOptions } from '../types';
+import { CharMode, Colors, resolveOptions } from '../types';
 import { generateP5Svg, EmptyTextError } from '../index';
 
 const metrics = new StubMetricsProvider();
@@ -58,12 +58,24 @@ describe('computeLayout', () => {
     expect(first.cx).toBeCloseTo(opts.padding + first.outterWidth / 2, 6);
   });
 
-  it('non-first glyphs have exactly one black background rect', () => {
+  it('every non-space glyph has exactly one black box rect', () => {
     const r = layout('PERSONA', 3);
-    for (const g of r.glyphs.slice(1)) {
+    for (const g of r.glyphs) {
       if (g.mode === CharMode.SPACE) continue;
-      expect(g.rects).toHaveLength(1);
+      expect(g.rects.filter((x) => x.role === 'box')).toHaveLength(1);
     }
+  });
+
+  it('inverted glyphs are a black letter on a white box with a black border', () => {
+    let inverted = null as ReturnType<typeof layout>['glyphs'][number] | null;
+    for (let seed = 0; seed < 80 && !inverted; seed++) {
+      inverted =
+        layout('ABCDEFGHIJKLMNOP', seed).glyphs.find((g) => g.mode === CharMode.INVERT) ?? null;
+    }
+    expect(inverted).not.toBeNull();
+    expect(inverted!.text?.fill).toBe(Colors.BLACK);
+    expect(inverted!.rects.find((x) => x.role === 'box')!.fill).toBe(Colors.BLACK);
+    expect(inverted!.rects.find((x) => x.role === 'accent')!.fill).toBe(Colors.WHITE);
   });
 
   it('truncates input to maxChars', () => {

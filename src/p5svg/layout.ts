@@ -36,13 +36,13 @@ function rotatedBox(width: number, height: number, angleDeg: number) {
   };
 }
 
-function pickRedModes(chars: string[], rng: Rng): CharMode[] {
+function pickAccentModes(chars: string[], rng: Rng): CharMode[] {
   const modes = chars.map(() => CharMode.WHITE);
   modes[0] = CharMode.FIRST;
   for (let i = 1; i < chars.length; i += RED_RANGE) {
     for (let j = i; j < i + RED_RANGE - 1 && j < chars.length; ++j) {
       if (rng() * 10 > 6) {
-        modes[j] = CharMode.RED;
+        modes[j] = rng() < 0.5 ? CharMode.RED : CharMode.INVERT;
         break;
       }
     }
@@ -70,10 +70,17 @@ function buildSpec(
   }
 
   const fontSize = opts.fontSize * scale;
-  const color = mode === CharMode.RED ? Colors.RED : Colors.WHITE;
+  const color =
+    mode === CharMode.RED
+      ? Colors.RED
+      : mode === CharMode.INVERT
+        ? Colors.BLACK
+        : Colors.WHITE;
   const size = metrics.measure(char, fontSize, opts.fontFamily, 'bold');
   const rot = rotatedBox(size.width, size.height, angle);
-  const outter = mode === CharMode.FIRST ? BORDER_SCALE : BACKGROUND_SCALE;
+  // INVERT needs the larger border box (like FIRST) for a black border + white inner.
+  const outter =
+    mode === CharMode.FIRST || mode === CharMode.INVERT ? BORDER_SCALE : BACKGROUND_SCALE;
 
   return {
     isSpace: false,
@@ -96,7 +103,7 @@ export function computeLayout(
   rng: Rng,
 ): LayoutResult {
   const chars = Array.from(text.trim().toUpperCase()).slice(0, opts.maxChars);
-  const modes = pickRedModes(chars, rng);
+  const modes = pickAccentModes(chars, rng);
 
   const specs: CharSpec[] = chars.map((char, i) => {
     if (/^\s$/.test(char)) {
@@ -197,6 +204,27 @@ export function computeLayout(
         height: bh,
         fill: Colors.RED,
         angle: s.angle - 2,
+        role: 'accent',
+      });
+    } else if (s.mode === CharMode.INVERT) {
+      glyph.rects.push({
+        x: boxX,
+        y: (height - oh) / 2,
+        width: boxW,
+        height: oh,
+        fill: Colors.BLACK,
+        angle: s.angle + 1,
+        role: 'box',
+      });
+      const iw = ow * FIRST_BG_SCALE;
+      const ih = oh * FIRST_BG_SCALE;
+      glyph.rects.push({
+        x: offset + (ow - iw) / 2,
+        y: (height - ih) / 2,
+        width: iw,
+        height: ih,
+        fill: Colors.WHITE,
+        angle: s.angle,
         role: 'accent',
       });
     } else {

@@ -8,6 +8,8 @@ export enum CharMode {
   FIRST = 'first',
   WHITE = 'white',
   RED = 'red',
+  /** Black letter on a white box with a black border. */
+  INVERT = 'invert',
   SPACE = 'space',
 }
 
