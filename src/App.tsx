@@ -3,11 +3,8 @@ import Controls, { ControlsState } from './components/Controls';
 import SvgPreview from './components/SvgPreview';
 import { generateP5Svg, EmptyTextError, DEFAULTS } from './p5svg';
 import { CanvasMetricsProvider } from './p5svg/metrics';
-import { loadEmbeddedFont, EmbeddedFont } from './p5svg/fontEmbed';
+import { loadEmbeddedFonts, EmbeddedFontSet } from './p5svg/fontEmbed';
 import { downloadSvg, downloadPng, copyPng } from './export';
-
-const FONT_FAMILY = 'P5Display';
-const FONT_URL = '/fonts/Anton-Regular.woff2';
 
 function randomSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff);
@@ -29,31 +26,35 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fontRef = useRef<EmbeddedFont | null>(null);
+  const fontSetRef = useRef<EmbeddedFontSet | null>(null);
   const metricsRef = useRef<CanvasMetricsProvider | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const font = await loadEmbeddedFont(FONT_URL, FONT_FAMILY);
+      const fontSet = await loadEmbeddedFonts();
       if (typeof FontFace !== 'undefined') {
-        const face = new FontFace(FONT_FAMILY, `url(${font.dataUrl})`, { weight: '700' });
-        await face.load();
-        document.fonts.add(face);
+        await Promise.all(
+          fontSet.faces.map(async (f) => {
+            const face = new FontFace(f.family, `url(${f.dataUrl})`);
+            await face.load();
+            document.fonts.add(face);
+          }),
+        );
         await document.fonts.ready;
       }
       if (cancelled) return;
-      fontRef.current = font;
+      fontSetRef.current = fontSet;
       metricsRef.current = new CanvasMetricsProvider();
       setReady(true);
-    })().catch((e) => setError(`Failed to load font: ${String(e)}`));
+    })().catch((e) => setError(`Failed to load fonts: ${String(e)}`));
     return () => {
       cancelled = true;
     };
   }, []);
 
   const result = useMemo(() => {
-    if (!ready || !metricsRef.current || !fontRef.current) return null;
+    if (!ready || !metricsRef.current || !fontSetRef.current) return null;
     if (!state.text.trim()) return null;
     try {
       return generateP5Svg(
@@ -61,7 +62,7 @@ export default function App() {
         {
           seed,
           fontSize: state.fontSize,
-          fontFamily: FONT_FAMILY,
+          fonts: fontSetRef.current.families,
           background: {
             fill: state.fillEnabled ? state.fillColor : undefined,
             burst: state.burst,
@@ -70,7 +71,7 @@ export default function App() {
           mergeBoxes: state.mergeBoxes,
           mergeOverlap: state.mergeOverlap,
         },
-        { metrics: metricsRef.current, fontFaceCss: fontRef.current.fontFaceCss },
+        { metrics: metricsRef.current, fontFaceCss: fontSetRef.current.fontFaceCss },
       );
     } catch (e) {
       if (e instanceof EmptyTextError) return null;
@@ -97,8 +98,7 @@ export default function App() {
     width: result!.width,
     height: result!.height,
     scale: state.pngScale,
-    fontFamily: FONT_FAMILY,
-    fontDataUrl: fontRef.current?.dataUrl,
+    fonts: fontSetRef.current?.faces,
   });
 
   const runExport = async (fn: () => void | Promise<void>) => {
@@ -137,7 +137,7 @@ export default function App() {
         />
       </main>
 
-      {!ready && <p className="app__status">Loading font…</p>}
+      {!ready && <p className="app__status">Loading fonts…</p>}
       {error && <p className="app__error">{error}</p>}
     </div>
   );

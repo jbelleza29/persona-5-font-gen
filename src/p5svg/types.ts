@@ -33,6 +33,8 @@ export interface Options {
   seed?: number;
   maxChars?: number;
   fontFamily?: string;
+  /** Font families to swap between per letter (P5 ransom-note look). */
+  fonts?: string[];
   background?: Background;
   outline?: Outline;
   /** Widen the black boxes so they overlap into one fused shape behind the letters. */
@@ -47,6 +49,7 @@ export interface ResolvedOptions {
   padding: number;
   maxChars: number;
   fontFamily: string;
+  fonts: string[];
   background: Background;
   outline: Required<Outline>;
   mergeBoxes: boolean;
@@ -59,6 +62,7 @@ export const DEFAULTS: ResolvedOptions = {
   padding: 30,
   maxChars: 30,
   fontFamily: 'P5Display',
+  fonts: ['P5Display'],
   background: {},
   outline: { enabled: false, color: Colors.WHITE, radius: 3 },
   mergeBoxes: false,
@@ -66,12 +70,14 @@ export const DEFAULTS: ResolvedOptions = {
 };
 
 export function resolveOptions(options: Options = {}): ResolvedOptions {
+  const fontFamily = options.fontFamily ?? DEFAULTS.fontFamily;
   return {
     fontSize: options.fontSize ?? DEFAULTS.fontSize,
     gutter: options.gutter ?? DEFAULTS.gutter,
     padding: options.padding ?? DEFAULTS.padding,
     maxChars: options.maxChars ?? DEFAULTS.maxChars,
-    fontFamily: options.fontFamily ?? DEFAULTS.fontFamily,
+    fontFamily,
+    fonts: options.fonts && options.fonts.length > 0 ? options.fonts : [fontFamily],
     background: { ...DEFAULTS.background, ...options.background },
     outline: { ...DEFAULTS.outline, ...options.outline },
     mergeBoxes: options.mergeBoxes ?? DEFAULTS.mergeBoxes,
@@ -95,6 +101,7 @@ export interface TextLayer {
   x: number;
   y: number;
   fontSize: number;
+  fontFamily: string;
   fill: string;
   angle: number;
   char: string;

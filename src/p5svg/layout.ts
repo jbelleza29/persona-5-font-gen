@@ -20,6 +20,7 @@ interface CharSpec {
   angle: number; // final per-char angle
   scale: number;
   fontSize: number;
+  fontFamily: string;
   color: string;
   size: GlyphSize;
   outterWidth: number;
@@ -69,6 +70,7 @@ function buildSpec(
     angle = base * randomOp(rng);
   }
 
+  const fontFamily = opts.fonts[Math.floor(rng() * opts.fonts.length)];
   const fontSize = opts.fontSize * scale;
   const color =
     mode === CharMode.RED
@@ -76,7 +78,7 @@ function buildSpec(
       : mode === CharMode.INVERT
         ? Colors.BLACK
         : Colors.WHITE;
-  const size = metrics.measure(char, fontSize, opts.fontFamily, 'bold');
+  const size = metrics.measure(char, fontSize, fontFamily, 'normal');
   const rot = rotatedBox(size.width, size.height, angle);
   const outter = mode === CharMode.FIRST ? BORDER_SCALE : BACKGROUND_SCALE;
 
@@ -87,6 +89,7 @@ function buildSpec(
     angle,
     scale,
     fontSize,
+    fontFamily,
     color,
     size,
     outterWidth: rot.width * outter,
@@ -112,6 +115,7 @@ export function computeLayout(
         angle: 0,
         scale: 1,
         fontSize: 0,
+        fontFamily: '',
         color: 'none',
         size: { width: 0, height: 0, left: 0, ascent: 0, descent: 0 },
         outterWidth: 0,
@@ -177,6 +181,7 @@ export function computeLayout(
         x: textX,
         y: textY,
         fontSize: s.fontSize,
+        fontFamily: s.fontFamily,
         fill: s.color,
         angle: s.angle,
         char: s.char,

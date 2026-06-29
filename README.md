@@ -26,7 +26,16 @@ npm run e2e      # playwright browser tests
 - `src/export/` — SVG / PNG / clipboard, browser only.
 - `src/components/`, `src/App.tsx` — UI.
 
-## Font
+## Fonts
 
-Bundles [Anton](https://fonts.google.com/specimen/Anton) (`public/fonts/Anton-Regular.woff2`),
-SIL Open Font License 1.1 — see `public/fonts/OFL.txt`.
+The P5 ransom-note look comes from swapping fonts per letter, so several heavy
+display faces are bundled (`public/fonts/`) and the generator picks one per glyph.
+License texts ship alongside each font.
+
+| Font | Style | License |
+| --- | --- | --- |
+| [Anton](https://fonts.google.com/specimen/Anton) | condensed sans | OFL 1.1 (`Anton-OFL.txt`) |
+| [Archivo Black](https://fonts.google.com/specimen/Archivo+Black) | heavy grotesque | OFL 1.1 (`ArchivoBlack-OFL.txt`) |
+| [Bevan](https://fonts.google.com/specimen/Bevan) | slab serif | OFL 1.1 (`Bevan-OFL.txt`) |
+| [Tinos](https://fonts.google.com/specimen/Tinos) | Times-style serif | Apache 2.0 (`Tinos-LICENSE.txt`) |
+| [Jost](https://fonts.google.com/specimen/Jost) | geometric (Futura-ish) | OFL 1.1 (`Jost-OFL.txt`) |

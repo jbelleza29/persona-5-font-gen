@@ -78,6 +78,17 @@ describe('computeLayout', () => {
     expect(inverted!.rects.find((x) => x.role === 'accent')!.fill).toBe(Colors.WHITE);
   });
 
+  it('swaps fonts across letters when given a font set', () => {
+    const r = computeLayout(
+      'TAKEYOURHEART',
+      resolveOptions({ fonts: ['FA', 'FB', 'FC', 'FD', 'FE'] }),
+      metrics,
+      mulberry32(1),
+    );
+    const families = new Set(r.glyphs.filter((g) => g.text).map((g) => g.text!.fontFamily));
+    expect(families.size).toBeGreaterThan(1);
+  });
+
   it('truncates input to maxChars', () => {
     const r = layout('ABCDEFGHIJ', 1, { maxChars: 4 });
     expect(r.glyphs).toHaveLength(4);
