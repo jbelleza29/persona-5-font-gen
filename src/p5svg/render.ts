@@ -4,6 +4,18 @@ function n(x: number): number {
   return Math.round(x * 100) / 100;
 }
 
+/** Accept only well-formed CSS colors; reject anything that could break out of
+ * the SVG attribute (the markup is injected via dangerouslySetInnerHTML). */
+export function safeColor(color: string | undefined, fallback: string | null): string | null {
+  if (!color) return fallback;
+  const v = color.trim();
+  const ok =
+    /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(v) ||
+    /^[a-z]{1,20}$/i.test(v) ||
+    /^(rgb|rgba|hsl|hsla)\([0-9.,%/\sdeg]+\)$/i.test(v);
+  return ok ? v : fallback;
+}
+
 function esc(s: string): string {
   return s.replace(/[&<>"]/g, (c) => {
     switch (c) {
@@ -61,7 +73,7 @@ export function renderSvg(
         `<feMorphology in="SourceAlpha" operator="dilate" radius="${n(
           opts.outline.radius,
         )}" result="d"/>` +
-        `<feFlood flood-color="${opts.outline.color}" result="f"/>` +
+        `<feFlood flood-color="${safeColor(opts.outline.color, Colors.WHITE)}" result="f"/>` +
         `<feComposite in="f" in2="d" operator="in" result="edge"/>` +
         `<feMerge><feMergeNode in="edge"/><feMergeNode in="SourceGraphic"/></feMerge>` +
         `</filter>`,
@@ -70,11 +82,10 @@ export function renderSvg(
   if (defs.length) parts.push(`<defs>${defs.join('')}</defs>`);
 
   // z-stack: background fill -> burst -> glyphs
-  if (opts.background.fill) {
+  const fill = safeColor(opts.background.fill, null);
+  if (fill) {
     parts.push(
-      `<rect id="bg-fill" x="0" y="0" width="${n(w)}" height="${n(h)}" fill="${
-        opts.background.fill
-      }"/>`,
+      `<rect id="bg-fill" x="0" y="0" width="${n(w)}" height="${n(h)}" fill="${fill}"/>`,
     );
   }
   if (opts.background.burst) {

@@ -82,6 +82,18 @@ describe('renderSvg', () => {
     expect(svg('TAKE YOUR HEART', {}, 42)).toEqual(svg('TAKE YOUR HEART', {}, 42));
   });
 
+  it('drops an invalid/unsafe background fill (no bg-fill rect)', () => {
+    const s = svg('ABC', { background: { fill: '#000" onload="x' } });
+    expect(s).not.toContain('id="bg-fill"');
+    expect(s).not.toContain('onload');
+  });
+
+  it('keeps valid color formats (hex, named, rgb)', () => {
+    expect(svg('ABC', { background: { fill: '#abc' } })).toContain('id="bg-fill"');
+    expect(svg('ABC', { background: { fill: 'rebeccapurple' } })).toContain('fill="rebeccapurple"');
+    expect(svg('ABC', { background: { fill: 'rgb(10, 20, 30)' } })).toContain('id="bg-fill"');
+  });
+
   it('injects the provided font-face CSS into <defs>', () => {
     const css = "@font-face{font-family:'P5Display';src:url(data:font/woff2;base64,AAAA)}";
     const result = generateP5Svg('TAKE YOUR HEART', { seed: 7 }, { metrics, fontFaceCss: css });
