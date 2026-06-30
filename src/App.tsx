@@ -6,8 +6,13 @@ import { CanvasMetricsProvider } from './p5svg/metrics';
 import { loadEmbeddedFont, EmbeddedFont } from './p5svg/fontEmbed';
 import { downloadSvg, downloadPng, copyPng } from './export';
 
-const FONT_FAMILY = 'P5Display';
-const FONT_URL = '/fonts/Anton-Regular.woff2';
+// Prototype: mix three families across the letters.
+const FONTS = [
+  { family: 'P5Times', url: '/fonts/Tinos-Bold.woff2' }, // Times New Roman
+  { family: 'P5Heavy', url: '/fonts/ArchivoBlack-Regular.woff2' }, // heavy slot (was Bevan/Cooper stand-in)
+  { family: 'P5Avant', url: '/fonts/Jost-Bold.woff2' }, // ITC Avant Garde Gothic
+];
+const FONT_FAMILIES = FONTS.map((f) => f.family);
 
 function randomSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff);
@@ -27,46 +32,52 @@ export default function App() {
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fontRef = useRef<EmbeddedFont | null>(null);
+  const fontsRef = useRef<EmbeddedFont[]>([]);
   const metricsRef = useRef<CanvasMetricsProvider | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const font = await loadEmbeddedFont(FONT_URL, FONT_FAMILY);
+      const fonts = await Promise.all(FONTS.map((f) => loadEmbeddedFont(f.url, f.family)));
       if (typeof FontFace !== 'undefined') {
-        const face = new FontFace(FONT_FAMILY, `url(${font.dataUrl})`, { weight: '700' });
-        await face.load();
-        document.fonts.add(face);
+        await Promise.all(
+          fonts.map(async (font) => {
+            const face = new FontFace(font.family, `url(${font.dataUrl})`, { weight: '700' });
+            await face.load();
+            document.fonts.add(face);
+          }),
+        );
         await document.fonts.ready;
       }
       if (cancelled) return;
-      fontRef.current = font;
+      fontsRef.current = fonts;
       metricsRef.current = new CanvasMetricsProvider();
       setReady(true);
-    })().catch((e) => setError(`Failed to load font: ${String(e)}`));
+    })().catch((e) => setError(`Failed to load fonts: ${String(e)}`));
     return () => {
       cancelled = true;
     };
   }, []);
 
   const result = useMemo(() => {
-    if (!ready || !metricsRef.current || !fontRef.current) return null;
+    if (!ready || !metricsRef.current || !fontsRef.current.length) return null;
     if (!state.text.trim()) return null;
     try {
+      const fontFaceCss = fontsRef.current.map((f) => f.fontFaceCss).join('');
       return generateP5Svg(
         state.text,
         {
           seed,
           fontSize: state.fontSize,
-          fontFamily: FONT_FAMILY,
+          fontFamily: FONT_FAMILIES[0],
+          fontFamilies: FONT_FAMILIES,
           background: {
             fill: state.fillEnabled ? state.fillColor : undefined,
             burst: state.burst,
           },
           outline: { enabled: state.outline },
         },
-        { metrics: metricsRef.current, fontFaceCss: fontRef.current.fontFaceCss },
+        { metrics: metricsRef.current, fontFaceCss },
       );
     } catch (e) {
       if (e instanceof EmptyTextError) return null;
@@ -91,8 +102,7 @@ export default function App() {
     width: result!.width,
     height: result!.height,
     scale: state.pngScale,
-    fontFamily: FONT_FAMILY,
-    fontDataUrl: fontRef.current?.dataUrl,
+    fonts: fontsRef.current.map((f) => ({ family: f.family, dataUrl: f.dataUrl })),
   });
 
   const runExport = async (fn: () => void | Promise<void>) => {

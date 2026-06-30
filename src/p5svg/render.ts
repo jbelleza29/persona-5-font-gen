@@ -109,7 +109,7 @@ export function renderSvg(
     if (g.text) {
       const t = g.text;
       parts.push(
-        `<text x="${n(t.x)}" y="${n(t.y)}" font-family="${opts.fontFamily}" font-weight="700" font-size="${n(
+        `<text x="${n(t.x)}" y="${n(t.y)}" font-family="${t.fontFamily}" font-weight="700" font-size="${n(
           t.fontSize,
         )}" fill="${t.fill}" dominant-baseline="alphabetic" text-anchor="start" transform="rotate(${n(
           t.angle,

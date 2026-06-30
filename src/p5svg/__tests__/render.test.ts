@@ -21,6 +21,10 @@ function glyphGroup(s: string): string {
   return s.slice(start, s.indexOf('</svg>'));
 }
 
+function textFonts(s: string): string[] {
+  return [...s.matchAll(/<text\b[^>]*\bfont-family="([^"]+)"/g)].map((m) => m[1]);
+}
+
 describe('renderSvg', () => {
   it('default output is transparent with no outline', () => {
     const s = svg('TAKE YOUR HEART');
@@ -108,5 +112,25 @@ describe('renderSvg', () => {
     expect(result.svg).toContain('<defs>');
     expect(result.svg).toContain('@font-face');
     expect(result.svg).toContain('P5Display');
+  });
+
+  it('assigns each glyph a font from the pool and mixes them', () => {
+    const pool = ['FontA', 'FontB', 'FontC'];
+    const used = textFonts(svg('TAKE YOUR HEART', { fontFamilies: pool }));
+    expect(used.length).toBeGreaterThan(0);
+    for (const f of used) expect(pool).toContain(f);
+    expect(new Set(used).size).toBeGreaterThan(1); // genuinely mixed, not all one font
+  });
+
+  it('falls back to a single fontFamily when no pool is given', () => {
+    const used = textFonts(svg('TAKE YOUR HEART', { fontFamily: 'SoloFont' }));
+    expect(used.length).toBeGreaterThan(0);
+    expect([...new Set(used)]).toEqual(['SoloFont']);
+  });
+
+  it('resolveOptions: fontFamilies defaults to [fontFamily] and ignores an empty pool', () => {
+    expect(resolveOptions({ fontFamily: 'X' }).fontFamilies).toEqual(['X']);
+    expect(resolveOptions({ fontFamily: 'X', fontFamilies: [] }).fontFamilies).toEqual(['X']);
+    expect(resolveOptions({ fontFamilies: ['A', 'B'] }).fontFamilies).toEqual(['A', 'B']);
   });
 });

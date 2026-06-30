@@ -31,6 +31,8 @@ export interface Options {
   seed?: number;
   maxChars?: number;
   fontFamily?: string;
+  /** Pool of font families; each glyph picks one at random. Falls back to [fontFamily]. */
+  fontFamilies?: string[];
   background?: Background;
   outline?: Outline;
 }
@@ -41,6 +43,7 @@ export interface ResolvedOptions {
   padding: number;
   maxChars: number;
   fontFamily: string;
+  fontFamilies: string[];
   background: Background;
   outline: Required<Outline>;
 }
@@ -51,17 +54,21 @@ export const DEFAULTS: ResolvedOptions = {
   padding: 30,
   maxChars: 30,
   fontFamily: 'P5Display',
+  fontFamilies: ['P5Display'],
   background: {},
   outline: { enabled: false, color: Colors.WHITE, radius: 3 },
 };
 
 export function resolveOptions(options: Options = {}): ResolvedOptions {
+  const fontFamily = options.fontFamily ?? DEFAULTS.fontFamily;
+  const fontFamilies = options.fontFamilies?.length ? options.fontFamilies : [fontFamily];
   return {
     fontSize: options.fontSize ?? DEFAULTS.fontSize,
     gutter: options.gutter ?? DEFAULTS.gutter,
     padding: options.padding ?? DEFAULTS.padding,
     maxChars: options.maxChars ?? DEFAULTS.maxChars,
-    fontFamily: options.fontFamily ?? DEFAULTS.fontFamily,
+    fontFamily,
+    fontFamilies,
     background: { ...DEFAULTS.background, ...options.background },
     outline: { ...DEFAULTS.outline, ...options.outline },
   };
@@ -84,6 +91,7 @@ export interface TextLayer {
   fill: string;
   angle: number;
   char: string;
+  fontFamily: string;
 }
 
 export interface PlacedGlyph {

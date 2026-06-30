@@ -21,6 +21,7 @@ interface CharSpec {
   scale: number;
   fontSize: number;
   color: string;
+  fontFamily: string;
   size: GlyphSize;
   outterWidth: number;
   outterHeight: number;
@@ -57,6 +58,8 @@ function buildSpec(
   metrics: GlyphMetricsProvider,
   rng: Rng,
 ): CharSpec {
+  const pool = opts.fontFamilies;
+  const fontFamily = pool[Math.floor(rng() * pool.length) % pool.length];
   // rng call order mirrors the reference BoxChar constructor.
   const base = -(Math.round(rng() * 10) % 10);
   let scale: number;
@@ -71,7 +74,7 @@ function buildSpec(
 
   const fontSize = opts.fontSize * scale;
   const color = mode === CharMode.RED ? Colors.RED : Colors.WHITE;
-  const size = metrics.measure(char, fontSize, opts.fontFamily, 'bold');
+  const size = metrics.measure(char, fontSize, fontFamily, 'bold');
   const rot = rotatedBox(size.width, size.height, angle);
   const outter = mode === CharMode.FIRST ? BORDER_SCALE : BACKGROUND_SCALE;
 
@@ -83,6 +86,7 @@ function buildSpec(
     scale,
     fontSize,
     color,
+    fontFamily,
     size,
     outterWidth: rot.width * outter,
     outterHeight: rot.height * outter,
@@ -108,6 +112,7 @@ export function computeLayout(
         scale: 1,
         fontSize: 0,
         color: 'none',
+        fontFamily: '',
         size: { width: 0, height: 0, left: 0, ascent: 0, descent: 0 },
         outterWidth: 0,
         outterHeight: 0,
@@ -174,6 +179,7 @@ export function computeLayout(
         fill: s.color,
         angle: s.angle,
         char: s.char,
+        fontFamily: s.fontFamily,
       },
     };
 

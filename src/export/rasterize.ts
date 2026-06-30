@@ -2,19 +2,22 @@ export interface RasterizeOptions {
   width: number;
   height: number;
   scale?: number;
-  /** Warm this font in the document before rasterizing (WebKit bug 219770). */
-  fontFamily?: string;
-  fontDataUrl?: string;
+  /** Warm these fonts in the document before rasterizing (WebKit bug 219770). */
+  fonts?: Array<{ family: string; dataUrl: string }>;
 }
 
-async function warmFont(family?: string, dataUrl?: string): Promise<void> {
-  if (!family || !dataUrl || typeof FontFace === 'undefined' || !('fonts' in document)) {
+async function warmFonts(fonts?: RasterizeOptions['fonts']): Promise<void> {
+  if (!fonts?.length || typeof FontFace === 'undefined' || !('fonts' in document)) {
     return;
   }
   try {
-    const face = new FontFace(family, `url(${dataUrl})`, { weight: '700' });
-    await face.load();
-    document.fonts.add(face);
+    await Promise.all(
+      fonts.map(async ({ family, dataUrl }) => {
+        const face = new FontFace(family, `url(${dataUrl})`, { weight: '700' });
+        await face.load();
+        document.fonts.add(face);
+      }),
+    );
     await document.fonts.ready;
   } catch {
     // best effort; fall through to plain rasterization
@@ -52,7 +55,7 @@ function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {
 /** Rasterize a self-contained SVG string to a transparent PNG blob. */
 export async function svgToPngBlob(svg: string, opts: RasterizeOptions): Promise<Blob> {
   const scale = opts.scale ?? 1;
-  await warmFont(opts.fontFamily, opts.fontDataUrl);
+  await warmFonts(opts.fonts);
 
   const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(blob);

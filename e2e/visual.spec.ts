@@ -15,6 +15,11 @@ test('renders a styled P5 SVG for the default text', async ({ page }) => {
   // self-contained: embedded font face present
   const markup = await svg.evaluate((el) => el.outerHTML);
   expect(markup).toContain('@font-face');
+  // letters mix more than one font family
+  const fonts = await svg
+    .locator('#glyphs text')
+    .evaluateAll((els) => els.map((e) => e.getAttribute('font-family')));
+  expect(new Set(fonts).size).toBeGreaterThan(1);
 });
 
 test('default output is transparent with no background or outline', async ({ page }) => {
