@@ -1,10 +1,12 @@
 export interface GlyphSize {
   width: number;
   height: number;
-  /** Ink top offset from the em-box top (textBaseline 'top'). */
-  top: number;
-  /** Ink left offset from the pen x. */
+  /** Ink left offset from the pen x (left side bearing). */
   left: number;
+  /** Ink top distance above the alphabetic baseline. */
+  ascent: number;
+  /** Ink bottom distance below the alphabetic baseline. */
+  descent: number;
 }
 
 export interface GlyphMetricsProvider {
@@ -12,10 +14,10 @@ export interface GlyphMetricsProvider {
 }
 
 /**
- * Canvas-backed metrics. Renders the glyph with textBaseline 'top' and scans the
- * pixels for the ink bounding box (same approach as the reference). top/left are
- * the ink offsets from the em-box top-left, which pairs with the SVG renderer's
- * dominant-baseline="text-before-edge".
+ * Canvas-backed metrics. Renders the glyph on the alphabetic baseline and scans
+ * the pixels for the ink bounding box. Returning ascent/descent relative to the
+ * alphabetic baseline lets the SVG renderer place text by that same baseline,
+ * which canvas and SVG define identically (so centering is exact).
  */
 export class CanvasMetricsProvider implements GlyphMetricsProvider {
   private ctx: CanvasRenderingContext2D;
@@ -29,16 +31,18 @@ export class CanvasMetricsProvider implements GlyphMetricsProvider {
 
   measure(char: string, fontPx: number, fontFamily: string, weight: string): GlyphSize {
     const ctx = this.ctx;
-    const pad = Math.ceil(fontPx * 0.5);
-    const w = Math.ceil(fontPx * 2) + pad;
-    const h = Math.ceil(fontPx * 2) + pad;
+    const pad = Math.ceil(fontPx * 0.6);
+    const w = Math.ceil(fontPx * 2) + pad * 2;
+    const h = Math.ceil(fontPx * 2) + pad * 2;
+    const penX = pad;
+    const penY = Math.ceil(fontPx * 1.4);
     ctx.canvas.width = w;
     ctx.canvas.height = h;
     ctx.clearRect(0, 0, w, h);
     ctx.font = `${weight} ${fontPx}px ${fontFamily}`;
-    ctx.textBaseline = 'top';
+    ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = '#000';
-    ctx.fillText(char, 0, 0);
+    ctx.fillText(char, penX, penY);
 
     const data = ctx.getImageData(0, 0, w, h).data;
     let minX = w;
@@ -59,14 +63,15 @@ export class CanvasMetricsProvider implements GlyphMetricsProvider {
     if (maxX < 0) {
       // No ink (e.g. unsupported glyph) — fall back to advance width.
       const adv = ctx.measureText(char).width || fontPx * 0.4;
-      return { width: Math.max(1, adv), height: fontPx, top: 0, left: 0 };
+      return { width: Math.max(1, adv), height: fontPx, left: 0, ascent: fontPx * 0.7, descent: 0 };
     }
 
     return {
       width: maxX - minX + 1,
       height: maxY - minY + 1,
-      top: minY,
-      left: minX,
+      left: minX - penX,
+      ascent: penY - minY,
+      descent: maxY - penY,
     };
   }
 }
@@ -80,11 +85,13 @@ export class StubMetricsProvider implements GlyphMetricsProvider {
     const wide = /[MW]/.test(char);
     const narrow = /[IL1.]/.test(char);
     const factor = wide ? 0.8 : narrow ? 0.3 : 0.6;
+    const ascent = Math.round(fontPx * 0.72);
     return {
       width: Math.max(1, Math.round(fontPx * factor)),
-      height: Math.max(1, Math.round(fontPx * 0.72)),
-      top: Math.round(fontPx * 0.14),
+      height: ascent,
       left: Math.round(fontPx * 0.04),
+      ascent,
+      descent: 0,
     };
   }
 }

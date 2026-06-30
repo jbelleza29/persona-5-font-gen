@@ -108,7 +108,7 @@ export function computeLayout(
         scale: 1,
         fontSize: 0,
         color: 'none',
-        size: { width: 0, height: 0, top: 0, left: 0 },
+        size: { width: 0, height: 0, left: 0, ascent: 0, descent: 0 },
         outterWidth: 0,
         outterHeight: 0,
       };
@@ -154,7 +154,8 @@ export function computeLayout(
     const cx = offset + ow / 2;
     const cy = padding + oh / 2;
     const textX = offset + (ow - s.size.width) / 2 - s.size.left;
-    const textY = (height - s.size.height) / 2 - s.size.top;
+    // baseline y so the ink box is centered vertically in the canvas
+    const textY = height / 2 + (s.size.ascent - s.size.descent) / 2;
 
     const glyph: PlacedGlyph = {
       char: s.char,
