@@ -26,7 +26,7 @@ test('background toggles add their layers', async ({ page }) => {
   const svg = page.locator('.preview__svg svg');
   await page.getByText('P5 burst rings').click();
   await expect(svg.locator('#bg-burst')).toHaveCount(1);
-  await page.getByText('Solid color').click();
+  await page.getByText('Solid color', { exact: true }).click();
   await expect(svg.locator('#bg-fill')).toHaveCount(1);
 });
 

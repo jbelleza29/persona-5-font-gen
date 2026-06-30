@@ -67,18 +67,8 @@ export function renderSvg(
     )}" height="${n(h)}">`,
   );
 
-  // Box-shadow style spread: dilate the black mass so crowded boxes/contours fuse.
-  const mergeRadius = opts.mergeBoxes ? opts.fontSize * (0.04 + opts.mergeOverlap) : 0;
-
   const defs: string[] = [];
   if (fontFaceCss) defs.push(`<style>${fontFaceCss}</style>`);
-  if (mergeRadius > 0) {
-    defs.push(
-      `<filter id="merge" x="-20%" y="-20%" width="140%" height="140%">` +
-        `<feMorphology operator="dilate" radius="${n(mergeRadius)}"/>` +
-        `</filter>`,
-    );
-  }
   if (defs.length) parts.push(`<defs>${defs.join('')}</defs>`);
 
   // z-stack: background fill -> burst -> glyphs
@@ -92,10 +82,12 @@ export function renderSvg(
     parts.push(renderBurst(w, h));
   }
 
-  // Middle letters are boxes; the leading/trailing letters trace the letter contour.
-  // Drawn in z-ordered passes: black -> white inner panel -> letter fill. No white edge.
+  // Each letter is a white glyph with a black text-stroke contour (paint-order stroke,
+  // so the stroke sits behind the fill). Crowded thick strokes fuse into one black mass.
   const letters = glyphs.filter((g) => g.text);
-  const mergeBoost = opts.mergeBoxes ? opts.mergeOverlap : 0;
+  const strokeBoost = opts.mergeBoxes ? opts.mergeOverlap : 0;
+  const contourW = (g: (typeof glyphs)[number]) =>
+    g.text!.fontSize * (OUTLINE_FRAC + strokeBoost);
 
   const textLayer = (g: (typeof glyphs)[number], color: string, strokeW: number): string => {
     const t = g.text!;
@@ -110,32 +102,11 @@ export function renderSvg(
     )} ${n(g.cx)} ${n(g.cy)})">${esc(t.char)}</text>`;
   };
 
-  const rectEl = (g: (typeof glyphs)[number], r: (typeof g.rects)[number], fill: string) =>
-    `<rect x="${n(r.x)}" y="${n(r.y)}" width="${n(r.width)}" height="${n(
-      r.height,
-    )}" fill="${fill}" transform="rotate(${n(r.angle)} ${n(g.cx)} ${n(g.cy)})"/>`;
-
-  const contourW = (g: (typeof glyphs)[number]) => g.text!.fontSize * (OUTLINE_FRAC + mergeBoost);
-
   parts.push('<g id="glyphs">');
-  // pass 1: the black mass (boxes + contour strokes), dilated so it fuses into one shape
-  parts.push(`<g${mergeRadius > 0 ? ' filter="url(#merge)"' : ''}>`);
-  for (const g of letters) {
-    for (const r of g.rects) if (r.role === 'box') parts.push(rectEl(g, r, r.fill));
-    if (g.style === 'contour') {
-      parts.push(textLayer(g, Colors.BLACK, 2 * contourW(g)));
-    }
-  }
-  parts.push('</g>');
-  // pass 2: white inner panels (inverted box letters), on top of the merged black
-  for (const g of letters) {
-    if (g.style !== 'box') continue;
-    for (const r of g.rects) if (r.role === 'inner') parts.push(rectEl(g, r, r.fill));
-  }
-  // pass 3: the letters
-  for (const g of letters) {
-    parts.push(textLayer(g, safeColor(g.text!.fill, Colors.WHITE)!, 0));
-  }
+  // pass 1: black stroke contours first, so every neighbour's stroke sits behind all fills
+  for (const g of letters) parts.push(textLayer(g, Colors.BLACK, 2 * contourW(g)));
+  // pass 2: the white letters on top
+  for (const g of letters) parts.push(textLayer(g, safeColor(g.text!.fill, Colors.WHITE)!, 0));
   parts.push('</g>');
   parts.push('</svg>');
   return parts.join('');

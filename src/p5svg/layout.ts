@@ -1,11 +1,4 @@
-import {
-  CharMode,
-  Colors,
-  LayoutResult,
-  PlacedGlyph,
-  RectLayer,
-  ResolvedOptions,
-} from './types';
+import { CharMode, Colors, LayoutResult, PlacedGlyph, ResolvedOptions } from './types';
 import { GlyphMetricsProvider, GlyphSize } from './metrics';
 import { randomOp, Rng } from './rng';
 
@@ -15,7 +8,6 @@ const RED_RANGE = 5; // at most one red letter per window of 5
 const THIN_PROB = 0.33; // chance a letter is "thin" when allowed (baseline leans thick)
 const VOWELS = /[AEIOU]/; // P5 drops middle vowels to lowercase
 const CONSONANT_LOWER_PROB = 0.15; // occasional lowercase consonant for ransom variation
-const INNER_SCALE = 0.85; // white inner panel size for inverted box letters
 const TRACK = 0.84; // advance per letter as a fraction of its slot (lower = more crowded)
 
 interface CharSpec {
@@ -231,41 +223,9 @@ export function computeLayout(
     const textX = offset + (ow - s.size.width) / 2 - s.size.left;
     // baseline y so the ink box is centered vertically in the canvas
     const textY = height / 2 + (s.size.ascent - s.size.descent) / 2;
-    const style: 'box' | 'contour' = i === firstIdx || i === lastIdx ? 'contour' : 'box';
-    // Contour (edge) letters are always white with a black contour; never inverted.
-    const fill = style === 'contour' ? Colors.WHITE : s.color;
-
-    const rects: RectLayer[] = [];
-    let rightEdge = offset + ow;
-    if (style === 'box') {
-      // Merge mode widens the black box so neighbors fuse; letters keep their spot.
-      const extend = opts.mergeBoxes ? gutter + ow * opts.mergeOverlap : 0;
-      const boxX = offset - extend / 2;
-      const boxW = ow + extend;
-      rects.push({
-        x: boxX,
-        y: (height - oh) / 2,
-        width: boxW,
-        height: oh,
-        fill: Colors.BLACK,
-        angle: s.angle + 1,
-        role: 'box',
-      });
-      if (s.mode === CharMode.INVERT) {
-        const iw = ow * INNER_SCALE;
-        const ih = oh * INNER_SCALE;
-        rects.push({
-          x: offset + (ow - iw) / 2,
-          y: (height - ih) / 2,
-          width: iw,
-          height: ih,
-          fill: Colors.WHITE,
-          angle: s.angle,
-          role: 'inner',
-        });
-      }
-      rightEdge = boxX + boxW;
-    }
+    // Every letter is a white glyph with a black text-stroke contour (no boxes).
+    const style: 'box' | 'contour' = 'contour';
+    const fill = Colors.WHITE;
 
     glyphs.push({
       char: s.char,
@@ -277,7 +237,7 @@ export function computeLayout(
       outterHeight: oh,
       cx,
       cy,
-      rects,
+      rects: [],
       text: {
         x: textX,
         y: textY,
@@ -289,8 +249,8 @@ export function computeLayout(
       },
     });
 
-    maxRight = Math.max(maxRight, rightEdge);
-    offset += ow * TRACK; // crowd letters so boxes/contours overlap and merge
+    maxRight = Math.max(maxRight, offset + ow);
+    offset += ow * TRACK; // crowd letters so the stroked contours overlap and merge
   }
 
   const width = maxRight + padding;

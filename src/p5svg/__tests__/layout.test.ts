@@ -60,17 +60,11 @@ describe('computeLayout', () => {
     expect(first.cx).toBeCloseTo(opts.padding + first.outterWidth / 2, 6);
   });
 
-  it('uses contour for the leading/trailing letters and boxes in between', () => {
+  it('renders every letter as a contour glyph (no boxes)', () => {
     const r = layout('TAKE YOUR HEART', 3);
     const letters = r.glyphs.filter((g) => g.mode !== CharMode.SPACE);
-    expect(letters[0].style).toBe('contour');
-    expect(letters[letters.length - 1].style).toBe('contour');
-    // edge letters have no white inner panel (they are not boxed letters)
-    expect(letters[0].rects.some((x) => x.role === 'inner')).toBe(false);
-    // at least one interior letter is a box with a black rect
-    const interior = letters.slice(1, -1);
-    expect(interior.every((g) => g.style === 'box')).toBe(true);
-    expect(interior.some((g) => g.rects.some((x) => x.role === 'box'))).toBe(true);
+    expect(letters.every((g) => g.style === 'contour')).toBe(true);
+    expect(letters.every((g) => g.rects.length === 0)).toBe(true);
   });
 
   it('every non-space glyph uses a brand fill color', () => {
@@ -82,17 +76,12 @@ describe('computeLayout', () => {
     }
   });
 
-  it('inverted box letters are a black letter on a white inner panel', () => {
-    let inverted = null as ReturnType<typeof layout>['glyphs'][number] | null;
-    for (let seed = 0; seed < 80 && !inverted; seed++) {
-      inverted =
-        layout('ABCDEFGHIJKLMNOP', seed).glyphs.find(
-          (g) => g.mode === CharMode.INVERT && g.style === 'box',
-        ) ?? null;
+  it('every non-space letter has a white fill (black contour is added at render)', () => {
+    const r = layout('PERSONA', 3);
+    for (const g of r.glyphs) {
+      if (g.mode === CharMode.SPACE) continue;
+      expect(g.text!.fill).toBe(Colors.WHITE);
     }
-    expect(inverted).not.toBeNull();
-    expect(inverted!.text?.fill).toBe(Colors.BLACK);
-    expect(inverted!.rects.find((x) => x.role === 'inner')?.fill).toBe(Colors.WHITE);
   });
 
   it('mixes upper and lower case, keeping the first letter uppercase', () => {
