@@ -21,7 +21,7 @@ test('default output is transparent with no background or outline', async ({ pag
   const svg = page.locator('.preview__svg svg');
   await expect(svg.locator('#bg-fill')).toHaveCount(0);
   await expect(svg.locator('#bg-burst')).toHaveCount(0);
-  await expect(svg.locator('#paperEdge')).toHaveCount(0);
+  await expect(svg.locator('#p5-sticker')).toHaveCount(0);
 });
 
 test('background and outline toggles add their layers', async ({ page }) => {
@@ -29,7 +29,7 @@ test('background and outline toggles add their layers', async ({ page }) => {
   await page.getByText('White cut-paper outline').click();
   const svg = page.locator('.preview__svg svg');
   await expect(svg.locator('#bg-burst')).toHaveCount(1);
-  await expect(svg.locator('#paperEdge')).toHaveCount(1);
+  await expect(svg.locator('#p5-sticker')).toHaveCount(1);
 });
 
 test('PNG rasterization: transparent top corner + opaque ink in content', async ({ page }) => {

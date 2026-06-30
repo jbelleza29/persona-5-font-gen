@@ -67,15 +67,18 @@ export function renderSvg(
 
   const defs: string[] = [];
   if (fontFaceCss) defs.push(`<style>${fontFaceCss}</style>`);
+  // Sticker outline: dilate the union silhouette of all boxes, fill it with the
+  // outline color, and paint it behind the originals — one white edge around the
+  // whole word (not per letter), boxes left intact.
   if (opts.outline.enabled) {
+    const r = n(opts.outline.radius);
+    const oc = safeColor(opts.outline.color, Colors.WHITE);
     defs.push(
-      `<filter id="paperEdge" x="-20%" y="-20%" width="140%" height="140%">` +
-        `<feMorphology in="SourceAlpha" operator="dilate" radius="${n(
-          opts.outline.radius,
-        )}" result="d"/>` +
-        `<feFlood flood-color="${safeColor(opts.outline.color, Colors.WHITE)}" result="f"/>` +
-        `<feComposite in="f" in2="d" operator="in" result="edge"/>` +
-        `<feMerge><feMergeNode in="edge"/><feMergeNode in="SourceGraphic"/></feMerge>` +
+      `<filter id="p5-sticker" x="-20%" y="-20%" width="140%" height="140%">` +
+        `<feMorphology in="SourceAlpha" operator="dilate" radius="${r}" result="d"/>` +
+        `<feFlood flood-color="${oc}" result="c"/>` +
+        `<feComposite in="c" in2="d" operator="in" result="o"/>` +
+        `<feMerge><feMergeNode in="o"/><feMergeNode in="SourceGraphic"/></feMerge>` +
         `</filter>`,
     );
   }
@@ -92,8 +95,8 @@ export function renderSvg(
     parts.push(renderBurst(w, h));
   }
 
-  const filterAttr = opts.outline.enabled ? ' filter="url(#paperEdge)"' : '';
-  parts.push(`<g id="glyphs"${filterAttr}>`);
+  const glyphFilter = opts.outline.enabled ? ` filter="url(#p5-sticker)"` : '';
+  parts.push(`<g id="glyphs"${glyphFilter}>`);
   for (const g of glyphs) {
     const pivot = `${n(g.cx)} ${n(g.cy)}`;
     for (const r of g.rects) {

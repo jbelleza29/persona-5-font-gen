@@ -27,7 +27,7 @@ describe('renderSvg', () => {
     expect(s).toContain('<svg');
     expect(s).not.toContain('id="bg-fill"');
     expect(s).not.toContain('id="bg-burst"');
-    expect(s).not.toContain('paperEdge');
+    expect(s).not.toContain('p5-sticker');
     expect(s).toContain('<g id="glyphs">'); // no filter attribute
   });
 
@@ -50,12 +50,20 @@ describe('renderSvg', () => {
     expect(s).toContain('id="bg-burst"');
   });
 
-  it('emits the paperEdge filter only when outline is enabled', () => {
-    expect(svg('ABC')).not.toContain('paperEdge');
+  it('emits the sticker outline filter only when outline is enabled', () => {
+    expect(svg('ABC')).not.toContain('p5-sticker');
     const s = svg('ABC', { outline: { enabled: true } });
-    expect(s).toContain('<filter id="paperEdge"');
-    expect(s).toContain('filter="url(#paperEdge)"');
+    expect(s).toContain('<filter id="p5-sticker"');
+    expect(s).toContain('filter="url(#p5-sticker)"');
     expect(s).toContain('feMorphology');
+    // outline color floods the dilated silhouette
+    expect(s).toContain(`flood-color="${Colors.WHITE}"`);
+  });
+
+  it('uses a custom outline color and radius when given', () => {
+    const s = svg('ABC', { outline: { enabled: true, color: '#00ffaa', radius: 7 } });
+    expect(s).toContain('flood-color="#00ffaa"');
+    expect(s).toContain('radius="7"');
   });
 
   it('uses only the three brand colors inside the glyph collage', () => {
