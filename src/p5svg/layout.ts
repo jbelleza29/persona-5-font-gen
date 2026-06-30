@@ -1,14 +1,17 @@
-import { CharMode, Colors, LayoutResult, PlacedGlyph, ResolvedOptions } from './types';
+import {
+  CharMode,
+  Colors,
+  LayoutResult,
+  PlacedGlyph,
+  ResolvedOptions,
+} from './types';
 import { GlyphMetricsProvider, GlyphSize } from './metrics';
 import { randomOp, Rng } from './rng';
 
 const BORDER_SCALE = 1.4; // FIRST glyph outer box
-const BACKGROUND_SCALE = 1.2; // other glyphs' slot
+const BACKGROUND_SCALE = 1.2; // other glyphs' box
 const RED_RANGE = 5; // at most one red letter per window of 5
-const THIN_PROB = 0.33; // chance a letter is "thin" when allowed (baseline leans thick)
-const VOWELS = /[AEIOU]/; // P5 drops middle vowels to lowercase
-const CONSONANT_LOWER_PROB = 0.15; // occasional lowercase consonant for ransom variation
-const TRACK = 0.84; // advance per letter as a fraction of its slot (lower = more crowded)
+const FIRST_BG_SCALE = 0.85; // red inner box on the first glyph
 
 interface CharSpec {
   isSpace: boolean;
@@ -17,7 +20,6 @@ interface CharSpec {
   angle: number; // final per-char angle
   scale: number;
   fontSize: number;
-  fontFamily: string;
   color: string;
   size: GlyphSize;
   outterWidth: number;
@@ -34,56 +36,18 @@ function rotatedBox(width: number, height: number, angleDeg: number) {
   };
 }
 
-function pickAccentModes(chars: string[], rng: Rng): CharMode[] {
+function pickRedModes(chars: string[], rng: Rng): CharMode[] {
   const modes = chars.map(() => CharMode.WHITE);
   modes[0] = CharMode.FIRST;
   for (let i = 1; i < chars.length; i += RED_RANGE) {
     for (let j = i; j < i + RED_RANGE - 1 && j < chars.length; ++j) {
       if (rng() * 10 > 6) {
-        modes[j] = CharMode.INVERT;
+        modes[j] = CharMode.RED;
         break;
       }
     }
   }
   return modes;
-}
-
-/**
- * Decide a thickness tier (thin/thick) per letter. Thick-biased baseline, and
- * a thin letter is never followed by another thin one (thick -> thin -> thick).
- * FIRST and INVERT letters are always thick. Spaces are skipped (don't break the run).
- */
-function pickThickness(chars: string[], modes: CharMode[], rng: Rng): boolean[] {
-  const thin = chars.map(() => false);
-  let prevThin = false;
-  for (let i = 0; i < chars.length; i++) {
-    if (/^\s$/.test(chars[i])) continue;
-    const mode = modes[i];
-    let isThin: boolean;
-    if (mode === CharMode.FIRST || mode === CharMode.INVERT || prevThin) {
-      isThin = false;
-    } else {
-      isThin = rng() < THIN_PROB;
-    }
-    thin[i] = isThin;
-    prevThin = isThin;
-  }
-  return thin;
-}
-
-/** Pick a font per letter from the matching thickness pool, avoiding an immediate repeat. */
-function pickFonts(chars: string[], thin: boolean[], thickFonts: string[], thinFonts: string[], rng: Rng): string[] {
-  const fonts = chars.map(() => '');
-  let prev = '';
-  for (let i = 0; i < chars.length; i++) {
-    if (/^\s$/.test(chars[i])) continue;
-    const pool = thin[i] ? thinFonts : thickFonts;
-    const choices = pool.length > 1 ? pool.filter((f) => f !== prev) : pool;
-    const fam = choices[Math.floor(rng() * choices.length)] ?? pool[0];
-    fonts[i] = fam;
-    prev = fam;
-  }
-  return fonts;
 }
 
 function buildSpec(
@@ -92,8 +56,6 @@ function buildSpec(
   opts: ResolvedOptions,
   metrics: GlyphMetricsProvider,
   rng: Rng,
-  fontFamily: string,
-  isEdge: boolean,
 ): CharSpec {
   // rng call order mirrors the reference BoxChar constructor.
   const base = -(Math.round(rng() * 10) % 10);
@@ -107,32 +69,19 @@ function buildSpec(
     angle = base * randomOp(rng);
   }
 
-  // P5 case rule: edges stay uppercase; middle vowels drop to lowercase; consonants
-  // stay uppercase apart from the occasional ransom-note exception.
-  let lower: boolean;
-  if (isEdge) {
-    lower = false;
-  } else if (VOWELS.test(char)) {
-    lower = true;
-  } else {
-    lower = rng() < CONSONANT_LOWER_PROB;
-  }
-  const display = lower ? char.toLowerCase() : char;
-
   const fontSize = opts.fontSize * scale;
-  const color = mode === CharMode.INVERT ? Colors.BLACK : Colors.WHITE;
-  const size = metrics.measure(display, fontSize, fontFamily, 'normal');
+  const color = mode === CharMode.RED ? Colors.RED : Colors.WHITE;
+  const size = metrics.measure(char, fontSize, opts.fontFamily, 'bold');
   const rot = rotatedBox(size.width, size.height, angle);
   const outter = mode === CharMode.FIRST ? BORDER_SCALE : BACKGROUND_SCALE;
 
   return {
     isSpace: false,
-    char: display,
+    char,
     mode,
     angle,
     scale,
     fontSize,
-    fontFamily,
     color,
     size,
     outterWidth: rot.width * outter,
@@ -147,24 +96,7 @@ export function computeLayout(
   rng: Rng,
 ): LayoutResult {
   const chars = Array.from(text.trim().toUpperCase()).slice(0, opts.maxChars);
-  const modes = pickAccentModes(chars, rng);
-  const thin = pickThickness(chars, modes, rng);
-
-  // thick pool = heavy faces; thin pool = the rest (fall back to all if a side is empty)
-  const thickFonts = opts.heavyFonts.length > 0 ? opts.heavyFonts : opts.fonts;
-  const thinCandidates = opts.fonts.filter((f) => !opts.heavyFonts.includes(f));
-  const thinFonts = thinCandidates.length > 0 ? thinCandidates : opts.fonts;
-  const fontByIndex = pickFonts(chars, thin, thickFonts, thinFonts, rng);
-
-  // Leading and trailing letters are the edges (contour style + always uppercase).
-  let firstIdx = -1;
-  let lastIdx = -1;
-  for (let i = 0; i < chars.length; i++) {
-    if (!/^\s$/.test(chars[i])) {
-      if (firstIdx < 0) firstIdx = i;
-      lastIdx = i;
-    }
-  }
+  const modes = pickRedModes(chars, rng);
 
   const specs: CharSpec[] = chars.map((char, i) => {
     if (/^\s$/.test(char)) {
@@ -175,33 +107,35 @@ export function computeLayout(
         angle: 0,
         scale: 1,
         fontSize: 0,
-        fontFamily: '',
         color: 'none',
-        size: { width: 0, height: 0, left: 0, ascent: 0, descent: 0 },
+        size: { width: 0, height: 0, top: 0, left: 0 },
         outterWidth: 0,
         outterHeight: 0,
       };
     }
-    return buildSpec(char, modes[i], opts, metrics, rng, fontByIndex[i], i === firstIdx || i === lastIdx);
+    return buildSpec(char, modes[i], opts, metrics, rng);
   });
 
   const { gutter, padding } = opts;
+  let width = padding * 2;
   let contentHeight = 0;
   for (const s of specs) {
-    if (!s.isSpace) contentHeight = Math.max(contentHeight, s.outterHeight);
+    if (s.isSpace) {
+      width += 2 * gutter;
+    } else {
+      width += s.outterWidth + gutter;
+      contentHeight = Math.max(contentHeight, s.outterHeight);
+    }
   }
   const height = contentHeight + padding * 2;
 
   const glyphs: PlacedGlyph[] = [];
   let offset = padding;
-  let maxRight = padding;
-  for (let i = 0; i < specs.length; i++) {
-    const s = specs[i];
+  for (const s of specs) {
     if (s.isSpace) {
       glyphs.push({
         char: ' ',
         mode: CharMode.SPACE,
-        style: 'box',
         angle: 0,
         scale: 1,
         outterWidth: 0,
@@ -212,7 +146,6 @@ export function computeLayout(
         text: null,
       });
       offset += 2 * gutter;
-      maxRight = Math.max(maxRight, offset);
       continue;
     }
 
@@ -221,16 +154,11 @@ export function computeLayout(
     const cx = offset + ow / 2;
     const cy = padding + oh / 2;
     const textX = offset + (ow - s.size.width) / 2 - s.size.left;
-    // baseline y so the ink box is centered vertically in the canvas
-    const textY = height / 2 + (s.size.ascent - s.size.descent) / 2;
-    // Every letter is a white glyph with a black text-stroke contour (no boxes).
-    const style: 'box' | 'contour' = 'contour';
-    const fill = Colors.WHITE;
+    const textY = (height - s.size.height) / 2 - s.size.top;
 
-    glyphs.push({
+    const glyph: PlacedGlyph = {
       char: s.char,
       mode: s.mode,
-      style,
       angle: s.angle,
       scale: s.scale,
       outterWidth: ow,
@@ -242,17 +170,45 @@ export function computeLayout(
         x: textX,
         y: textY,
         fontSize: s.fontSize,
-        fontFamily: s.fontFamily,
-        fill,
+        fill: s.color,
         angle: s.angle,
         char: s.char,
       },
-    });
+    };
 
-    maxRight = Math.max(maxRight, offset + ow);
-    offset += ow * TRACK; // crowd letters so the stroked contours overlap and merge
+    if (s.mode === CharMode.FIRST) {
+      glyph.rects.push({
+        x: offset,
+        y: (height - oh) / 2,
+        width: ow,
+        height: oh,
+        fill: Colors.BLACK,
+        angle: s.angle - 5,
+      });
+      const bw = ow * FIRST_BG_SCALE;
+      const bh = oh * FIRST_BG_SCALE;
+      glyph.rects.push({
+        x: offset + (ow - bw) / 2,
+        y: (height - bh) / 2,
+        width: bw,
+        height: bh,
+        fill: Colors.RED,
+        angle: s.angle - 2,
+      });
+    } else {
+      glyph.rects.push({
+        x: offset,
+        y: (height - oh) / 2,
+        width: ow,
+        height: oh,
+        fill: Colors.BLACK,
+        angle: s.angle + 1,
+      });
+    }
+
+    glyphs.push(glyph);
+    offset += ow + gutter;
   }
 
-  const width = maxRight + padding;
   return { width, height, glyphs };
 }

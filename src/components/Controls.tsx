@@ -4,8 +4,7 @@ export interface ControlsState {
   fillEnabled: boolean;
   fillColor: string;
   burst: boolean;
-  mergeBoxes: boolean;
-  mergeOverlap: number;
+  outline: boolean;
   pngScale: number;
 }
 
@@ -27,8 +26,7 @@ export default function Controls(props: Props) {
     fillEnabled,
     fillColor,
     burst,
-    mergeBoxes,
-    mergeOverlap,
+    outline,
     pngScale,
     maxChars,
     canExport,
@@ -99,28 +97,15 @@ export default function Controls(props: Props) {
       </fieldset>
 
       <fieldset className="group">
-        <legend>Boxes</legend>
+        <legend>Outline</legend>
         <label className="check">
           <input
             type="checkbox"
-            checked={mergeBoxes}
-            onChange={(e) => onChange('mergeBoxes', e.target.checked)}
+            checked={outline}
+            onChange={(e) => onChange('outline', e.target.checked)}
           />
-          Merge into one box
+          White cut-paper outline
         </label>
-        {mergeBoxes && (
-          <label className="field">
-            <span className="field__label">Box overlap: {Math.round(mergeOverlap * 100)}%</span>
-            <input
-              type="range"
-              min={0}
-              max={0.8}
-              step={0.01}
-              value={mergeOverlap}
-              onChange={(e) => onChange('mergeOverlap', Number(e.target.value))}
-            />
-          </label>
-        )}
       </fieldset>
 
       <button className="btn btn--primary" onClick={props.onReroll}>

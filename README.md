@@ -1,10 +1,9 @@
 # Persona 5 Text Generator
 
-Type text, get a Persona 5 "calling card" style graphic as **SVG**. Black-and-white
-ransom-note lettering: mixed fonts per letter, lowercased vowels, boxed middle
-letters with contour-traced edges that fuse into one shape. Transparent by default;
-add a solid color background or the concentric red/black burst. Export to SVG, PNG
-(1x/2x/4x), or copy to clipboard.
+Type text, get a Persona 5 "calling card" style graphic as **SVG**. Transparent
+background and no outline by default; add a solid color, the concentric red/black
+burst, or the white cut-paper outline as you like. Export to SVG, PNG (1x/2x/4x),
+or copy to clipboard.
 
 Reimplements the algorithm from [LzxHahaha/persona5](https://github.com/LzxHahaha/persona5)
 (canvas-based) as vector SVG.
@@ -27,16 +26,7 @@ npm run e2e      # playwright browser tests
 - `src/export/` — SVG / PNG / clipboard, browser only.
 - `src/components/`, `src/App.tsx` — UI.
 
-## Fonts
+## Font
 
-The P5 ransom-note look comes from swapping fonts per letter, so several heavy
-display faces are bundled (`public/fonts/`) and the generator picks one per glyph.
-License texts ship alongside each font.
-
-| Font | Style | License |
-| --- | --- | --- |
-| [Anton](https://fonts.google.com/specimen/Anton) | condensed sans | OFL 1.1 (`Anton-OFL.txt`) |
-| [Archivo Black](https://fonts.google.com/specimen/Archivo+Black) | heavy grotesque | OFL 1.1 (`ArchivoBlack-OFL.txt`) |
-| [Bevan](https://fonts.google.com/specimen/Bevan) | slab serif | OFL 1.1 (`Bevan-OFL.txt`) |
-| [Tinos](https://fonts.google.com/specimen/Tinos) | Times-style serif | Apache 2.0 (`Tinos-LICENSE.txt`) |
-| [Jost](https://fonts.google.com/specimen/Jost) | geometric (Futura-ish) | OFL 1.1 (`Jost-OFL.txt`) |
+Bundles [Anton](https://fonts.google.com/specimen/Anton) (`public/fonts/Anton-Regular.woff2`),
+SIL Open Font License 1.1 — see `public/fonts/OFL.txt`.

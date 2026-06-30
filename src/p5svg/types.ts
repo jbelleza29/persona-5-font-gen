@@ -7,8 +7,7 @@ export const Colors = {
 export enum CharMode {
   FIRST = 'first',
   WHITE = 'white',
-  /** Black letter on a white box / white outline. */
-  INVERT = 'invert',
+  RED = 'red',
   SPACE = 'space',
 }
 
@@ -19,6 +18,12 @@ export interface Background {
   burst?: boolean;
 }
 
+export interface Outline {
+  enabled: boolean;
+  color?: string;
+  radius?: number;
+}
+
 export interface Options {
   fontSize?: number;
   gutter?: number;
@@ -26,15 +31,8 @@ export interface Options {
   seed?: number;
   maxChars?: number;
   fontFamily?: string;
-  /** Font families to swap between per letter (P5 ransom-note look). */
-  fonts?: string[];
-  /** Thicker subset used for inverted (black-on-white) letters; defaults to `fonts`. */
-  heavyFonts?: string[];
   background?: Background;
-  /** Widen the black boxes so they overlap into one fused shape behind the letters. */
-  mergeBoxes?: boolean;
-  /** Extra black-box width as a fraction of the box, in merge mode (more = more fusion). */
-  mergeOverlap?: number;
+  outline?: Outline;
 }
 
 export interface ResolvedOptions {
@@ -43,11 +41,8 @@ export interface ResolvedOptions {
   padding: number;
   maxChars: number;
   fontFamily: string;
-  fonts: string[];
-  heavyFonts: string[];
   background: Background;
-  mergeBoxes: boolean;
-  mergeOverlap: number;
+  outline: Required<Outline>;
 }
 
 export const DEFAULTS: ResolvedOptions = {
@@ -56,35 +51,23 @@ export const DEFAULTS: ResolvedOptions = {
   padding: 30,
   maxChars: 30,
   fontFamily: 'P5Display',
-  fonts: ['P5Display'],
-  heavyFonts: ['P5Display'],
   background: {},
-  mergeBoxes: true,
-  mergeOverlap: 0.05,
+  outline: { enabled: false, color: Colors.WHITE, radius: 3 },
 };
 
 export function resolveOptions(options: Options = {}): ResolvedOptions {
-  const fontFamily = options.fontFamily ?? DEFAULTS.fontFamily;
   return {
     fontSize: options.fontSize ?? DEFAULTS.fontSize,
     gutter: options.gutter ?? DEFAULTS.gutter,
     padding: options.padding ?? DEFAULTS.padding,
     maxChars: options.maxChars ?? DEFAULTS.maxChars,
-    fontFamily,
-    fonts: options.fonts && options.fonts.length > 0 ? options.fonts : [fontFamily],
-    heavyFonts:
-      options.heavyFonts && options.heavyFonts.length > 0
-        ? options.heavyFonts
-        : options.fonts && options.fonts.length > 0
-          ? options.fonts
-          : [fontFamily],
+    fontFamily: options.fontFamily ?? DEFAULTS.fontFamily,
     background: { ...DEFAULTS.background, ...options.background },
-    mergeBoxes: options.mergeBoxes ?? DEFAULTS.mergeBoxes,
-    mergeOverlap: options.mergeOverlap ?? DEFAULTS.mergeOverlap,
+    outline: { ...DEFAULTS.outline, ...options.outline },
   };
 }
 
-/** A rotated rectangle layer (box style). All layers share the glyph pivot. */
+/** A rotated rectangle layer. All layers of a glyph share one pivot (cx, cy). */
 export interface RectLayer {
   x: number;
   y: number;
@@ -92,16 +75,12 @@ export interface RectLayer {
   height: number;
   fill: string;
   angle: number;
-  /** 'box' = black background; 'inner' = white inner panel (inverted letters). */
-  role: 'box' | 'inner';
 }
 
 export interface TextLayer {
   x: number;
   y: number;
   fontSize: number;
-  fontFamily: string;
-  /** Letter fill color. */
   fill: string;
   angle: number;
   char: string;
@@ -110,17 +89,14 @@ export interface TextLayer {
 export interface PlacedGlyph {
   char: string;
   mode: CharMode;
-  /** 'box' = rectangular background; 'contour' = outline tracing the letter (edges). */
-  style: 'box' | 'contour';
-  /** Base per-char angle. */
+  /** Base per-char angle before per-layer offsets. */
   angle: number;
   scale: number;
   outterWidth: number;
   outterHeight: number;
-  /** Rotation pivot for the letter. */
+  /** Shared rotation pivot reused by every layer of this glyph. */
   cx: number;
   cy: number;
-  /** Box-style background rects (empty for contour style). */
   rects: RectLayer[];
   text: TextLayer | null;
 }

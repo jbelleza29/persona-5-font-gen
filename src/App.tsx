@@ -3,8 +3,11 @@ import Controls, { ControlsState } from './components/Controls';
 import SvgPreview from './components/SvgPreview';
 import { generateP5Svg, EmptyTextError, DEFAULTS } from './p5svg';
 import { CanvasMetricsProvider } from './p5svg/metrics';
-import { loadEmbeddedFonts, EmbeddedFontSet } from './p5svg/fontEmbed';
+import { loadEmbeddedFont, EmbeddedFont } from './p5svg/fontEmbed';
 import { downloadSvg, downloadPng, copyPng } from './export';
+
+const FONT_FAMILY = 'P5Display';
+const FONT_URL = '/fonts/Anton-Regular.woff2';
 
 function randomSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff);
@@ -12,48 +15,43 @@ function randomSeed(): number {
 
 export default function App() {
   const [state, setState] = useState<ControlsState>({
-    text: 'PERSONA',
+    text: 'TAKE YOUR HEART',
     fontSize: 64,
     fillEnabled: false,
     fillColor: '#e5191c',
     burst: false,
-    mergeBoxes: true,
-    mergeOverlap: 0.02,
+    outline: false,
     pngScale: 2,
   });
   const [seed, setSeed] = useState(randomSeed);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fontSetRef = useRef<EmbeddedFontSet | null>(null);
+  const fontRef = useRef<EmbeddedFont | null>(null);
   const metricsRef = useRef<CanvasMetricsProvider | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const fontSet = await loadEmbeddedFonts();
+      const font = await loadEmbeddedFont(FONT_URL, FONT_FAMILY);
       if (typeof FontFace !== 'undefined') {
-        await Promise.all(
-          fontSet.faces.map(async (f) => {
-            const face = new FontFace(f.family, `url(${f.dataUrl})`);
-            await face.load();
-            document.fonts.add(face);
-          }),
-        );
+        const face = new FontFace(FONT_FAMILY, `url(${font.dataUrl})`, { weight: '700' });
+        await face.load();
+        document.fonts.add(face);
         await document.fonts.ready;
       }
       if (cancelled) return;
-      fontSetRef.current = fontSet;
+      fontRef.current = font;
       metricsRef.current = new CanvasMetricsProvider();
       setReady(true);
-    })().catch((e) => setError(`Failed to load fonts: ${String(e)}`));
+    })().catch((e) => setError(`Failed to load font: ${String(e)}`));
     return () => {
       cancelled = true;
     };
   }, []);
 
   const result = useMemo(() => {
-    if (!ready || !metricsRef.current || !fontSetRef.current) return null;
+    if (!ready || !metricsRef.current || !fontRef.current) return null;
     if (!state.text.trim()) return null;
     try {
       return generateP5Svg(
@@ -61,16 +59,14 @@ export default function App() {
         {
           seed,
           fontSize: state.fontSize,
-          fonts: fontSetRef.current.families,
-          heavyFonts: fontSetRef.current.heavyFamilies,
+          fontFamily: FONT_FAMILY,
           background: {
             fill: state.fillEnabled ? state.fillColor : undefined,
             burst: state.burst,
           },
-          mergeBoxes: state.mergeBoxes,
-          mergeOverlap: state.mergeOverlap,
+          outline: { enabled: state.outline },
         },
-        { metrics: metricsRef.current, fontFaceCss: fontSetRef.current.fontFaceCss },
+        { metrics: metricsRef.current, fontFaceCss: fontRef.current.fontFaceCss },
       );
     } catch (e) {
       if (e instanceof EmptyTextError) return null;
@@ -84,8 +80,7 @@ export default function App() {
     state.fillEnabled,
     state.fillColor,
     state.burst,
-    state.mergeBoxes,
-    state.mergeOverlap,
+    state.outline,
   ]);
 
   const onChange = <K extends keyof ControlsState>(key: K, value: ControlsState[K]) => {
@@ -96,7 +91,8 @@ export default function App() {
     width: result!.width,
     height: result!.height,
     scale: state.pngScale,
-    fonts: fontSetRef.current?.faces,
+    fontFamily: FONT_FAMILY,
+    fontDataUrl: fontRef.current?.dataUrl,
   });
 
   const runExport = async (fn: () => void | Promise<void>) => {
@@ -117,7 +113,7 @@ export default function App() {
     <div className="app">
       <header className="app__header">
         <h1>Persona 5 Text Generator</h1>
-        <p>SVG calling-card text. Transparent by default — add a solid color or the P5 burst if you want.</p>
+        <p>SVG calling-card text. Transparent by default — add a background or outline if you want.</p>
       </header>
 
       <main className="app__main">
@@ -135,7 +131,7 @@ export default function App() {
         />
       </main>
 
-      {!ready && <p className="app__status">Loading fonts…</p>}
+      {!ready && <p className="app__status">Loading font…</p>}
       {error && <p className="app__error">{error}</p>}
     </div>
   );

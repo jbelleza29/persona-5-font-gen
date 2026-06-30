@@ -1,7 +1,5 @@
 import { Colors, LayoutResult, ResolvedOptions } from './types';
 
-const OUTLINE_FRAC = 0.09; // letter contour thickness as a fraction of font size
-
 function n(x: number): number {
   return Math.round(x * 100) / 100;
 }
@@ -69,6 +67,18 @@ export function renderSvg(
 
   const defs: string[] = [];
   if (fontFaceCss) defs.push(`<style>${fontFaceCss}</style>`);
+  if (opts.outline.enabled) {
+    defs.push(
+      `<filter id="paperEdge" x="-20%" y="-20%" width="140%" height="140%">` +
+        `<feMorphology in="SourceAlpha" operator="dilate" radius="${n(
+          opts.outline.radius,
+        )}" result="d"/>` +
+        `<feFlood flood-color="${safeColor(opts.outline.color, Colors.WHITE)}" result="f"/>` +
+        `<feComposite in="f" in2="d" operator="in" result="edge"/>` +
+        `<feMerge><feMergeNode in="edge"/><feMergeNode in="SourceGraphic"/></feMerge>` +
+        `</filter>`,
+    );
+  }
   if (defs.length) parts.push(`<defs>${defs.join('')}</defs>`);
 
   // z-stack: background fill -> burst -> glyphs
@@ -82,31 +92,28 @@ export function renderSvg(
     parts.push(renderBurst(w, h));
   }
 
-  // Each letter is a white glyph with a black text-stroke contour (paint-order stroke,
-  // so the stroke sits behind the fill). Crowded thick strokes fuse into one black mass.
-  const letters = glyphs.filter((g) => g.text);
-  const strokeBoost = opts.mergeBoxes ? opts.mergeOverlap : 0;
-  const contourW = (g: (typeof glyphs)[number]) =>
-    g.text!.fontSize * (OUTLINE_FRAC + strokeBoost);
-
-  const textLayer = (g: (typeof glyphs)[number], color: string, strokeW: number): string => {
-    const t = g.text!;
-    const stroke =
-      strokeW > 0
-        ? ` stroke="${color}" stroke-width="${n(strokeW)}" stroke-linejoin="round" paint-order="stroke"`
-        : '';
-    return `<text x="${n(t.x)}" y="${n(t.y)}" font-family="${t.fontFamily}" font-size="${n(
-      t.fontSize,
-    )}" fill="${color}"${stroke} dominant-baseline="alphabetic" text-anchor="start" transform="rotate(${n(
-      t.angle,
-    )} ${n(g.cx)} ${n(g.cy)})">${esc(t.char)}</text>`;
-  };
-
-  parts.push('<g id="glyphs">');
-  // pass 1: black stroke contours first, so every neighbour's stroke sits behind all fills
-  for (const g of letters) parts.push(textLayer(g, Colors.BLACK, 2 * contourW(g)));
-  // pass 2: the white letters on top
-  for (const g of letters) parts.push(textLayer(g, safeColor(g.text!.fill, Colors.WHITE)!, 0));
+  const filterAttr = opts.outline.enabled ? ' filter="url(#paperEdge)"' : '';
+  parts.push(`<g id="glyphs"${filterAttr}>`);
+  for (const g of glyphs) {
+    const pivot = `${n(g.cx)} ${n(g.cy)}`;
+    for (const r of g.rects) {
+      parts.push(
+        `<rect x="${n(r.x)}" y="${n(r.y)}" width="${n(r.width)}" height="${n(
+          r.height,
+        )}" fill="${r.fill}" transform="rotate(${n(r.angle)} ${pivot})"/>`,
+      );
+    }
+    if (g.text) {
+      const t = g.text;
+      parts.push(
+        `<text x="${n(t.x)}" y="${n(t.y)}" font-family="${opts.fontFamily}" font-weight="700" font-size="${n(
+          t.fontSize,
+        )}" fill="${t.fill}" dominant-baseline="text-before-edge" text-anchor="start" transform="rotate(${n(
+          t.angle,
+        )} ${pivot})">${esc(t.char)}</text>`,
+      );
+    }
+  }
   parts.push('</g>');
   parts.push('</svg>');
   return parts.join('');

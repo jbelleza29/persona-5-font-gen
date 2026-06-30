@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { computeLayout } from '../layout';
 import { StubMetricsProvider } from '../metrics';
 import { mulberry32 } from '../rng';
-import { CharMode, Colors, resolveOptions } from '../types';
+import { CharMode, resolveOptions } from '../types';
 import { generateP5Svg, EmptyTextError } from '../index';
 
 const metrics = new StubMetricsProvider();
@@ -18,15 +18,15 @@ describe('computeLayout', () => {
     expect(r.glyphs[0].mode).toBe(CharMode.FIRST);
   });
 
-  it('keeps at most one inverted accent per 5-window and never at window boundary', () => {
+  it('keeps at most one red letter per 5-window and never at window boundary', () => {
     for (let seed = 0; seed < 40; seed++) {
       const r = layout('ABCDEFGHIJKLMNOP', seed); // no spaces -> glyph idx == char idx
-      const accents = r.glyphs
+      const reds = r.glyphs
         .map((g, i) => ({ g, i }))
-        .filter(({ g }) => g.mode === CharMode.INVERT)
+        .filter(({ g }) => g.mode === CharMode.RED)
         .map(({ i }) => i);
       const windows = new Map<number, number>();
-      for (const idx of accents) {
+      for (const idx of reds) {
         expect(idx).toBeGreaterThanOrEqual(1);
         expect((idx - 1) % 5).not.toBe(4); // boundary index is never eligible
         const w = Math.floor((idx - 1) / 5);
@@ -48,122 +48,22 @@ describe('computeLayout', () => {
     }
   });
 
-  it('first glyph is an uppercase white contour letter at the expected pivot', () => {
+  it('first glyph has 2 rects (border + red bg) and a shared pivot', () => {
     const r = layout('PERSONA', 3);
     const first = r.glyphs[0];
+    expect(first.rects).toHaveLength(2);
     expect(first.text).not.toBeNull();
-    expect(first.style).toBe('contour');
-    expect(first.text!.fill).toBe(Colors.WHITE);
-    expect(first.text!.char).toBe(first.text!.char.toUpperCase());
     // pivot formula: cy = padding + outterHeight/2; cx = padding + outterWidth/2 (first offset == padding)
     expect(first.cy).toBeCloseTo(opts.padding + first.outterHeight / 2, 6);
     expect(first.cx).toBeCloseTo(opts.padding + first.outterWidth / 2, 6);
   });
 
-  it('renders every letter as a contour glyph (no boxes)', () => {
-    const r = layout('TAKE YOUR HEART', 3);
-    const letters = r.glyphs.filter((g) => g.mode !== CharMode.SPACE);
-    expect(letters.every((g) => g.style === 'contour')).toBe(true);
-    expect(letters.every((g) => g.rects.length === 0)).toBe(true);
-  });
-
-  it('every non-space glyph uses a brand fill color', () => {
-    const allowed = [Colors.BLACK, Colors.WHITE];
+  it('non-first glyphs have exactly one black background rect', () => {
     const r = layout('PERSONA', 3);
-    for (const g of r.glyphs) {
+    for (const g of r.glyphs.slice(1)) {
       if (g.mode === CharMode.SPACE) continue;
-      expect(allowed).toContain(g.text!.fill);
+      expect(g.rects).toHaveLength(1);
     }
-  });
-
-  it('every non-space letter has a white fill (black contour is added at render)', () => {
-    const r = layout('PERSONA', 3);
-    for (const g of r.glyphs) {
-      if (g.mode === CharMode.SPACE) continue;
-      expect(g.text!.fill).toBe(Colors.WHITE);
-    }
-  });
-
-  it('mixes upper and lower case, keeping the first letter uppercase', () => {
-    let sawLower = false;
-    let sawUpper = false;
-    for (let seed = 0; seed < 40; seed++) {
-      const letters = layout('PERSONAFIVE', seed).glyphs.filter((g) => g.text);
-      const first = letters[0].text!.char;
-      expect(first).toBe(first.toUpperCase());
-      for (const g of letters) {
-        const c = g.text!.char;
-        if (c !== c.toUpperCase()) sawLower = true;
-        if (c !== c.toLowerCase()) sawUpper = true;
-      }
-    }
-    expect(sawLower).toBe(true);
-    expect(sawUpper).toBe(true);
-  });
-
-  it('does not repeat the same font on adjacent letters', () => {
-    const fonts = ['A', 'B', 'C', 'D', 'E'];
-    for (let seed = 0; seed < 60; seed++) {
-      const letters = computeLayout(
-        'ABCDEFGHIJKLMNOP',
-        resolveOptions({ fonts, heavyFonts: fonts }),
-        metrics,
-        mulberry32(seed),
-      ).glyphs.filter((g) => g.mode !== CharMode.SPACE);
-      for (let i = 1; i < letters.length; i++) {
-        expect(letters[i].text!.fontFamily).not.toBe(letters[i - 1].text!.fontFamily);
-      }
-    }
-  });
-
-  it('never places two thin letters consecutively', () => {
-    const heavy = ['H1', 'H2'];
-    const all = ['T1', 'T2', ...heavy];
-    for (let seed = 0; seed < 80; seed++) {
-      const r = computeLayout(
-        'ABCDEFGHIJKLMNOP',
-        resolveOptions({ fonts: all, heavyFonts: heavy }),
-        metrics,
-        mulberry32(seed),
-      );
-      const letters = r.glyphs.filter((g) => g.mode !== CharMode.SPACE);
-      for (let i = 1; i < letters.length; i++) {
-        const prevThin = !heavy.includes(letters[i - 1].text!.fontFamily);
-        const curThin = !heavy.includes(letters[i].text!.fontFamily);
-        expect(prevThin && curThin).toBe(false);
-      }
-    }
-  });
-
-  it('inverted glyphs only use the heavy font pool', () => {
-    const heavy = ['H1', 'H2'];
-    const all = ['T1', 'T2', 'T3', ...heavy];
-    let sawInvert = false;
-    for (let seed = 0; seed < 60; seed++) {
-      const r = computeLayout(
-        'ABCDEFGHIJKLMNOP',
-        resolveOptions({ fonts: all, heavyFonts: heavy }),
-        metrics,
-        mulberry32(seed),
-      );
-      for (const g of r.glyphs) {
-        if (g.mode !== CharMode.INVERT) continue;
-        sawInvert = true;
-        expect(heavy).toContain(g.text!.fontFamily);
-      }
-    }
-    expect(sawInvert).toBe(true);
-  });
-
-  it('swaps fonts across letters when given a font set', () => {
-    const r = computeLayout(
-      'TAKEYOURHEART',
-      resolveOptions({ fonts: ['FA', 'FB', 'FC', 'FD', 'FE'] }),
-      metrics,
-      mulberry32(1),
-    );
-    const families = new Set(r.glyphs.filter((g) => g.text).map((g) => g.text!.fontFamily));
-    expect(families.size).toBeGreaterThan(1);
   });
 
   it('truncates input to maxChars', () => {
@@ -171,12 +71,17 @@ describe('computeLayout', () => {
     expect(r.glyphs).toHaveLength(4);
   });
 
-  it('width bounds the rightmost box plus padding', () => {
+  it('computes width with spaces contributing 2*gutter', () => {
     const r = layout('TAKE YOUR HEART', 5);
-    const maxRight = Math.max(
-      ...r.glyphs.filter((g) => g.mode !== CharMode.SPACE).map((g) => g.cx + g.outterWidth / 2),
-    );
-    expect(r.width).toBeCloseTo(maxRight + opts.padding, 6);
+    const expected =
+      opts.padding * 2 +
+      r.glyphs.reduce(
+        (acc, g) =>
+          acc + (g.mode === CharMode.SPACE ? 2 * opts.gutter : g.outterWidth + opts.gutter),
+        0,
+      );
+    expect(r.width).toBeCloseTo(expected, 6);
+    // and the string actually contains space glyphs
     expect(r.glyphs.some((g) => g.mode === CharMode.SPACE)).toBe(true);
   });
 });

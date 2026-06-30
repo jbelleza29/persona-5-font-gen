@@ -50,24 +50,32 @@ describe('renderSvg', () => {
     expect(s).toContain('id="bg-burst"');
   });
 
-  it('uses only black and white inside the glyph collage', () => {
+  it('emits the paperEdge filter only when outline is enabled', () => {
+    expect(svg('ABC')).not.toContain('paperEdge');
+    const s = svg('ABC', { outline: { enabled: true } });
+    expect(s).toContain('<filter id="paperEdge"');
+    expect(s).toContain('filter="url(#paperEdge)"');
+    expect(s).toContain('feMorphology');
+  });
+
+  it('uses only the three brand colors inside the glyph collage', () => {
     const s = svg('TAKE YOUR HEART', { background: { fill: '#abcdef', burst: true } });
     const group = glyphGroup(s);
     const fills = [...group.matchAll(/fill="(#[0-9A-Fa-f]{3,6})"/g)].map((m) => m[1]);
     expect(fills.length).toBeGreaterThan(0);
-    const allowed = new Set<string>([Colors.WHITE, Colors.BLACK]);
+    const allowed = new Set<string>([Colors.RED, Colors.WHITE, Colors.BLACK]);
     for (const f of fills) expect(allowed.has(f)).toBe(true);
   });
 
-  it('draws all first-glyph layers about one shared pivot', () => {
+  it('rotates all 3 first-glyph layers about one shared pivot', () => {
     const opts = resolveOptions();
     const layout = computeLayout('PERSONA', opts, metrics, mulberry32(3));
     const first = layout.glyphs[0];
     const s = renderSvg(layout, opts, '');
     const pivotEnd = `${round2(first.cx)} ${round2(first.cy)})`;
     const count = s.split(pivotEnd).length - 1;
-    // contour stroke + fill (+ connector/edge) all share the exact same pivot
-    expect(count).toBeGreaterThanOrEqual(2);
+    // 2 rects + 1 text, all sharing the exact same pivot coordinates
+    expect(count).toBe(3);
   });
 
   it('is deterministic for a fixed seed + options', () => {
@@ -84,31 +92,6 @@ describe('renderSvg', () => {
     expect(svg('ABC', { background: { fill: '#abc' } })).toContain('id="bg-fill"');
     expect(svg('ABC', { background: { fill: 'rebeccapurple' } })).toContain('fill="rebeccapurple"');
     expect(svg('ABC', { background: { fill: 'rgb(10, 20, 30)' } })).toContain('id="bg-fill"');
-  });
-
-  const maxStroke = (s: string) =>
-    Math.max(...[...s.matchAll(/stroke-width="([\d.]+)"/g)].map((m) => Number(m[1])));
-
-  it('merge mode thickens the outline but keeps letters in place', () => {
-    const normal = computeLayout('TAKE', resolveOptions({ mergeBoxes: false }), metrics, mulberry32(1));
-    const merged = computeLayout('TAKE', resolveOptions({ mergeBoxes: true, mergeOverlap: 0.3 }), metrics, mulberry32(1));
-
-    // letters do not move (same baseline position)
-    for (let i = 0; i < normal.glyphs.length; i++) {
-      expect(merged.glyphs[i].text?.x ?? 0).toBeCloseTo(normal.glyphs[i].text?.x ?? 0, 6);
-      expect(merged.glyphs[i].text?.y ?? 0).toBeCloseTo(normal.glyphs[i].text?.y ?? 0, 6);
-    }
-
-    // the tracing outline gets thicker so neighbors fuse
-    expect(maxStroke(svg('TAKE', { mergeBoxes: true, mergeOverlap: 0.3 }))).toBeGreaterThan(
-      maxStroke(svg('TAKE', { mergeBoxes: false })),
-    );
-  });
-
-  it('mergeOverlap dials the outline thickness', () => {
-    const stroke = (overlap: number) =>
-      maxStroke(svg('TAKE', { mergeBoxes: true, mergeOverlap: overlap }));
-    expect(stroke(0.5)).toBeGreaterThan(stroke(0.1));
   });
 
   it('injects the provided font-face CSS into <defs>', () => {
